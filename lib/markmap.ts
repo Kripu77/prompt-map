@@ -5,8 +5,7 @@ import * as markmap from 'markmap-view';
 export const transformer = new Transformer();
 const { scripts, styles } = transformer.getAssets();
 
-
-if (styles && scripts) {
+if (typeof window !== 'undefined' && styles && scripts) {
   loadCSS(styles);
   loadJS(scripts, { getMarkmap: () => markmap });
 }
