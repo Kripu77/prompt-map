@@ -13,6 +13,7 @@ import { useThreads } from '@/hooks/use-threads';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useAnonymousAnalytics } from '@/hooks/use-anonymous-analytics';
 
 // Interface for prompt history
 interface PromptHistoryItem {
@@ -35,6 +36,7 @@ export default function MarkmapHooks() {
   const [promptHistory, setPromptHistory] = useState<PromptHistoryItem[]>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState<boolean>(false);
   const [isUserGenerated, setIsUserGenerated] = useState<boolean>(false);
+  const { recordAnonymousMindmap } = useAnonymousAnalytics();
   
   // New state for topic shift detection
   const [topicShiftDetected, setTopicShiftDetected] = useState<boolean>(false);
@@ -233,6 +235,15 @@ export default function MarkmapHooks() {
         setIsUserGenerated(true);
         // Enable follow-up mode for user-generated content
         setIsFollowUpMode(true);
+        
+        // Record anonymous usage data for non-authenticated users
+        if (!isAuthenticated) {
+          recordAnonymousMindmap(
+            value, 
+            data.content, 
+            extractMindmapTitle(data.content) || value
+          );
+        }
         
         // Show login notification if user is not authenticated
         if (!isAuthenticated && status !== "loading") {

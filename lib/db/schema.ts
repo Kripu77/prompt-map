@@ -85,6 +85,18 @@ export const userOnboarding = pgTable("user_onboarding", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// For storing anonymous mindmap data (non-signed in users)
+export const anonymousMindmaps = pgTable("anonymous_mindmap", {
+  id: text("id").notNull().primaryKey(),
+  sessionId: text("session_id").notNull(), // To track repeat anonymous users
+  prompt: text("prompt").notNull(), // The original prompt
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  content: json("content"),
+  userAgent: text("user_agent"), // Optional browser/device info
+  referrer: text("referrer"), // Optional referrer info
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),

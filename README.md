@@ -123,6 +123,7 @@ Here are specific scenarios to showcase in your product demo video:
 - **Authentication**: NextAuth.js for secure user management
 - **Database**: PostgreSQL with Drizzle ORM for data storage
 - **Animations**: Framer Motion for smooth transitions
+- **Analytics**: Anonymous usage tracking for non-signed in users
 
 ## 🎯 Key Demo Points
 
@@ -141,11 +142,37 @@ git clone https://github.com/yourusername/prompt-map.git
 # Install dependencies
 npm install
 
+# Set up your environment variables
+cp .env.example .env.local
+# Edit .env.local with your database credentials and API keys
+
+# Apply database migrations (includes anonymous data collection table)
+npx drizzle-kit push
+
 # Start the development server
 npm run dev
 ```
 
 Visit `http://localhost:3000` to see PromptMap in action.
+
+## 📊 Anonymous Data Collection
+
+PromptMap includes an optional feature to collect anonymous data from non-signed-in users for analytics and reporting purposes:
+
+- Data is stored in a separate `anonymous_mindmap` table
+- Collection includes:
+  - Generated mindmap content
+  - Original prompt used
+  - Session ID (stored in localStorage)
+  - Basic browser information
+  - No personally identifiable information is collected
+  
+To apply the anonymous data collection migration:
+
+```bash
+# Apply the specific migration
+psql -d your_database_name -f lib/db/migrations/anonymous_mindmaps.sql
+```
 
 ## 📄 License
 
