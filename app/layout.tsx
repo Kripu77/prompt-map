@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SessionProvider } from "@/components/auth/session-provider";
+import { Header } from "@/components/ui/header";
+import { ThreadsSidebar } from "@/components/ui/threads-sidebar";
+import { Toaster } from "@/components/ui/toaster";
+import { ScalableContent } from "@/components/ui/scalable-content";
+import { AuthSidebarProvider } from "@/components/auth-sidebar-provider";
 import "./globals.css";
 import "@/lib/markmap-defaults";
 
@@ -35,7 +41,20 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <SessionProvider>
+            <AuthSidebarProvider>
+              <div className="flex min-h-screen flex-col">
+                <Header />
+                <div className="relative flex-1 flex flex-col">
+                  <ThreadsSidebar />
+                  <ScalableContent>
+                    {children}
+                  </ScalableContent>
+                </div>
+              </div>
+            </AuthSidebarProvider>
+            <Toaster />
+          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>

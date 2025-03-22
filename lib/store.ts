@@ -23,3 +23,14 @@ export const useMindmapStore = create<MindmapState>((set) => ({
   setMindmapData: (data) => set({ mindmapData: data }),
   setMindmapRef: (ref) => set({ mindmapRef: ref }),
 }));
+
+// Add state for tracking sidebar open status
+interface SidebarState {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+}
+
+export const useSidebarStore = create<SidebarState>((set) => ({
+  isOpen: false,
+  setIsOpen: (isOpen) => set({ isOpen }),
+}));

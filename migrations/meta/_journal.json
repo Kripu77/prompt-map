@@ -1,0 +1,20 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1742616657811,
+      "tag": "0000_mighty_talkback",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1742621502161,
+      "tag": "0001_fantastic_nemesis",
+      "breakpoints": true
+    }
+  ]
+}

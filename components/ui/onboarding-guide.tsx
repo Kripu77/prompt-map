@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, HelpCircle, Info, CornerDownLeft, Sparkles, ArrowRight } from 'lucide-react'
+import { X, HelpCircle, Info, CornerDownLeft, Sparkles, ArrowRight, Download, List } from 'lucide-react'
 import { Button } from './button'
 import { cn } from '@/lib/utils'
 import { useOnboardingState } from '@/hooks/use-onboarding-state'
@@ -41,16 +41,39 @@ const ONBOARDING_STEPS = [
     icon: <Info className="h-5 w-5" />,
   },
   {
+    id: 'export-option',
+    title: 'Export Your Mindmap',
+    description: 'After generating a mindmap, you can export it as an image to share or save for later reference.',
+    position: 'bottom',
+    targetSelector: '.header-export-button',
+    icon: <Download className="h-5 w-5" />,
+  },
+  {
+    id: 'saved-mindmaps',
+    title: 'Access Your Mindmaps',
+    description: 'When signed in, all your mindmaps are automatically saved. Click the sidebar icon to view, search, and load your previous work.',
+    position: 'bottom-left',
+    targetSelector: '.sidebar-toggle-button',
+    icon: <List className="h-5 w-5" />,
+  },
+  {
     id: 'draggable-toolbar',
     title: 'Draggable Toolbar',
-    description: 'This toolbar can be dragged anywhere on the screen for your convenience. It provides similar functionality with additional options.',
-    position: 'bottom',
+    description: 'This toolbar can be dragged anywhere on the screen for your convenience. It provides zoom, centering, and export functionality.',
+    position: 'bottom-top',
     targetSelector: '.draggable-mindmap-toolbar',
     icon: <Info className="h-5 w-5" />,
   },
   {
+    id: 'responsive-design',
+    title: 'Optimized for All Devices',
+    description: 'PromptMap works on both desktop and mobile. On smaller screens, use the compact menu and pinch gestures to zoom and navigate your mindmaps.',
+    position: 'center',
+    icon: <Info className="h-5 w-5" />,
+  },
+  {
     id: 'topic-shift',
-    title: 'Changing topics',
+    title: 'Changing Topics',
     description: 'If you ask about an unrelated topic, we\'ll detect it and give you the option to create a new mind map instead of modifying the current one.',
     position: 'bottom',
     targetSelector: '.prompt-input-container',
@@ -86,11 +109,11 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
   const [tooltipPosition, setTooltipPosition] = useState<'top' | 'bottom' | 'right' | 'left' | 'center'>('center')
   const [arrowLeftPosition, setArrowLeftPosition] = useState<string>('calc(50% - 6px)')
   const [arrowTopPosition, setArrowTopPosition] = useState<string>('calc(50% - 6px)')
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({
+  const tooltipStyle = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)'
-  })
+  }
   const [isMobile, setIsMobile] = useState(false)
 
   // Get the current step data
@@ -132,254 +155,166 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
     }
   }, [])
 
-  // Calculate tooltip position and update states - memoized to prevent rerenders
+  // Calculate tooltip position based on target element
   const calculateTooltipPosition = useCallback(() => {
-    if (step.position === 'center' || !targetElement) {
-      setTooltipPosition('center')
-      setTooltipStyle({
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)'
-      })
-      return;
-    }
-
-    // Get viewport dimensions
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
+    if (!targetElement) return { left: 0, top: 0 };
     
-    // Detect mobile screens
-    const isSmallScreen = viewportWidth < 640 // sm breakpoint
+    // Use targetElement directly since it's already a DOMRect
+    const rect = targetElement;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
     
-    // Adjust tooltip dimensions based on screen size
-    const tooltipWidth = isSmallScreen 
-      ? (step.position === 'center' ? 300 : 280) // Increased width for mobile
-      : (step.position === 'center' ? 400 : 350) // Increased width for desktop
-    const tooltipHeight = isSmallScreen ? 220 : 240 // Slightly increased height
+    // Check if we're on a very small screen (mobile)
+    const isVerySmallScreen = windowWidth < 480;
+    // Check if we're on a small screen (mobile/tablet)
+    const isSmallScreen = windowWidth < 640;
     
-    // Use smaller margins on mobile
-    const margin = isSmallScreen ? 15 : 25 // Increased margins for better visibility
+    // Base dimensions
+    const tooltipWidth = isVerySmallScreen ? Math.min(windowWidth * 0.9, 280) : 
+                      isSmallScreen ? Math.min(windowWidth * 0.8, 320) : 400;
+    const tooltipHeight = isVerySmallScreen ? 180 : isSmallScreen ? 220 : 250;
     
-    // Calculate base positions
-    let position: React.CSSProperties = {}
-    let actualPosition: 'top' | 'bottom' | 'right' | 'left' = step.position as 'top' | 'bottom' | 'right'
-    
-    // Calculate the target center position
-    const targetCenterX = targetElement.left + (targetElement.width / 2)
-    const targetCenterY = targetElement.top + (targetElement.height / 2)
-    
-    // Special case for toolbar which might be at the edge of the screen
-    const isToolbarStep = step.id === 'draggable-toolbar' || step.id === 'mindmap-controls'
-    
-    // For smaller screens, use a simplified positioning approach
-    if (isSmallScreen) {
-      // On mobile, always position tooltip at the bottom of the viewport
-      // with horizontal centering, but maintain enough space at the bottom
-      const safeBottomMargin = 70 // Space for prompt input at bottom
-      const topPosition = Math.min(
-        viewportHeight - tooltipHeight - safeBottomMargin,
-        Math.max(targetElement.bottom + margin, viewportHeight * 0.4)
-      )
-      
-      // Center horizontally in viewport but with boundary checks
-      position = {
-        top: `${topPosition}px`,
-        left: '50%',
-        transform: 'translateX(-50%)'
-      }
-      
-      // Always use bottom position for mobile
-      actualPosition = 'bottom'
-      
-      // Calculate arrow position relative to horizontally centered tooltip
-      const tooltipLeft = viewportWidth / 2 - tooltipWidth / 2
-      const arrowLeftOffset = targetCenterX - tooltipLeft
-      setArrowLeftPosition(`${Math.max(15, Math.min(tooltipWidth - 15, arrowLeftOffset))}px`)
-      setArrowTopPosition('auto')
-      
-      // Store final position and style
-      setTooltipPosition(actualPosition)
-      setTooltipStyle(position)
-      return;
+    // For center position, we center the tooltip on the screen
+    if (step.position === 'center') {
+      return {
+        left: (windowWidth - tooltipWidth) / 2,
+        top: (windowHeight - tooltipHeight) / 2,
+      };
     }
     
-    // For toolbar elements, force bottom position with offset to ensure visibility
-    if (isToolbarStep) {
-      actualPosition = 'bottom'
-      
-      // Position the tooltip below the toolbar with more offset
-      const topPosition = targetElement.bottom + margin + 5
-      
-      // Center horizontally but with boundary checks
-      let leftPosition = targetCenterX - (tooltipWidth / 2)
-      
-      // Ensure the tooltip doesn't go off screen horizontally
-      if (leftPosition < margin) {
-        leftPosition = margin
-      } else if (leftPosition + tooltipWidth > viewportWidth - margin) {
-        leftPosition = viewportWidth - tooltipWidth - margin
-      }
-      
-      position = {
-        top: `${topPosition}px`,
-        left: `${leftPosition}px`,
-        transform: 'none'
-      }
-      
-      // Calculate arrow position for bottom placement
-      const arrowLeftOffset = targetCenterX - leftPosition
-      setArrowLeftPosition(`${Math.max(15, Math.min(tooltipWidth - 15, arrowLeftOffset))}px`)
-      setArrowTopPosition('auto')
-      
-      // Store final position and style
-      setTooltipPosition(actualPosition)
-      setTooltipStyle(position)
-      return;
+    // For special cases like mobile controls - center tooltip for better visibility
+    if (isVerySmallScreen && step.targetSelector === '.mindmap-controls') {
+      return {
+        left: (windowWidth - tooltipWidth) / 2,
+        top: windowHeight / 2 - tooltipHeight / 2, // Center vertically on small screens
+      };
     }
     
-    // Positioning logic based on desired position
-    if (step.position === 'top') {
-      // Position above the element
-      const topPosition = targetElement.top - tooltipHeight - margin
-      const leftPosition = targetCenterX
-      
-      // Check if the tooltip would go above the viewport
-      if (topPosition < (isSmallScreen ? 15 : 25)) {
-        // Switch to bottom positioning
-        actualPosition = 'bottom'
-        position = {
-          top: `${targetElement.bottom + margin}px`,
-          left: `${leftPosition}px`,
-          transform: 'translateX(-50%)'
-        }
-      } else {
-        position = {
-          top: `${topPosition}px`,
-          left: `${leftPosition}px`,
-          transform: 'translateX(-50%)'
-        }
-      }
-      
-      setArrowLeftPosition('calc(50% - 6px)')
-      setArrowTopPosition('auto') // Not used for top/bottom positioning
-    } 
-    else if (step.position === 'bottom') {
-      // Position below the element
-      const topPosition = targetElement.bottom + margin
-      const leftPosition = targetCenterX
-      
-      // For elements close to bottom of screen, position above
-      if (topPosition + tooltipHeight > viewportHeight - (isSmallScreen ? 25 : 35)) {
-        // Switch to top positioning
-        actualPosition = 'top'
-        position = {
-          top: `${targetElement.top - tooltipHeight - margin}px`,
-          left: `${leftPosition}px`,
-          transform: 'translateX(-50%)'
-        }
-      } else {
-        position = {
-          top: `${topPosition}px`,
-          left: `${leftPosition}px`,
-          transform: 'translateX(-50%)'
-        }
-      }
-      
-      setArrowLeftPosition('calc(50% - 6px)')
-      setArrowTopPosition('auto') // Not used for top/bottom positioning
+    // For mobile sidebar buttons - center tooltip when on very small screens
+    if (isVerySmallScreen && (step.targetSelector === '.sidebar-toggle-button' || step.targetSelector === '.header-export-button')) {
+      return {
+        left: (windowWidth - tooltipWidth) / 2,
+        top: rect.bottom + 20,
+      };
     }
-    else if (step.position === 'right') {
-      // Position to the right of the element
-      const leftPosition = targetElement.right + margin
-      const topPosition = targetCenterY - (tooltipHeight / 2)
+    
+    // For draggable toolbar, position based on screen size
+    if (step.targetSelector === '.draggable-mindmap-toolbar') {
+      if (isVerySmallScreen) {
+        // Center the tooltip on very small screens
+        return {
+          left: (windowWidth - tooltipWidth) / 2,
+          top: rect.bottom + 20,
+        };
+      }
       
-      // Check if the tooltip would go off the right edge
-      if (leftPosition + tooltipWidth > viewportWidth - (isSmallScreen ? 15 : 25)) {
-        // If off right edge, try left side
-        const leftSidePosition = targetElement.left - tooltipWidth - margin
+      // Position above on larger screens
+      return {
+        left: (rect.left + rect.right) / 2 - tooltipWidth / 2,
+        top: rect.top - tooltipHeight - 20,
+      };
+    }
+    
+    // Calculate based on specified position with fallbacks
+    let position = step.position as 'top' | 'bottom' | 'right' | 'left' | 'center';
+    
+    // Default positioning logic (with small screen adjustments)
+    let left: number | undefined, top: number | undefined;
+    switch (position) {
+      case 'top':
+        left = (rect.left + rect.right) / 2 - tooltipWidth / 2;
+        top = rect.top - tooltipHeight - 16;
         
-        if (leftSidePosition > (isSmallScreen ? 15 : 25)) {
-          // Left side has room
-          position = {
-            top: `${topPosition}px`,
-            left: `${leftSidePosition}px`,
-            transform: 'none'
-          }
-          actualPosition = 'left'
-        } else {
-          // Neither side works well, try top or bottom
-          const topRoom = targetElement.top
-          const bottomRoom = viewportHeight - targetElement.bottom
+        // Fallback if tooltip would be cut off at the top
+        if (top < 10) {
+          position = 'bottom';
+          top = rect.bottom + 16;
+        }
+        break;
+        
+      case 'bottom':
+        left = (rect.left + rect.right) / 2 - tooltipWidth / 2;
+        top = rect.bottom + 16;
+        
+        // Fallback if tooltip would be cut off at the bottom
+        if (top + tooltipHeight > windowHeight - 10) {
+          position = 'top';
+          top = rect.top - tooltipHeight - 16;
           
-          if (topRoom > bottomRoom && topRoom > tooltipHeight + margin) {
-            // Position above
-            position = {
-              top: `${targetElement.top - tooltipHeight - margin}px`,
-              left: `${targetCenterX - (tooltipWidth / 2)}px`,
-              transform: 'none'
+          // If still doesn't fit, try right or left
+          if (top < 10) {
+            if (rect.left > windowWidth / 2) {
+              position = 'left';
+              left = rect.left - tooltipWidth - 16;
+              top = (rect.top + rect.bottom) / 2 - tooltipHeight / 2;
+            } else {
+              position = 'right';
+              left = rect.right + 16;
+              top = (rect.top + rect.bottom) / 2 - tooltipHeight / 2;
             }
-            actualPosition = 'top'
-            setArrowLeftPosition('calc(50% - 6px)')
-          } else {
-            // Position below
-            position = {
-              top: `${targetElement.bottom + margin}px`,
-              left: `${targetCenterX - (tooltipWidth / 2)}px`,
-              transform: 'none'
-            }
-            actualPosition = 'bottom'
-            setArrowLeftPosition('calc(50% - 6px)')
           }
         }
-      } else {
-        // Right side has room
-        position = {
-          top: `${topPosition}px`,
-          left: `${leftPosition}px`,
-          transform: 'none'
+        break;
+        
+      case 'left':
+        left = rect.left - tooltipWidth - 16;
+        top = (rect.top + rect.bottom) / 2 - tooltipHeight / 2;
+        
+        // Fallback if tooltip would be cut off at the left
+        if (left < 10) {
+          position = 'right';
+          left = rect.right + 16;
         }
-      }
-      
-      // If we're using left/right positioning, calculate arrow vertical position
-      if (actualPosition === 'right' || actualPosition === 'left') {
-        // Position arrow vertically centered on the target
-        const arrowTop = targetCenterY - parseInt(String(position.top), 10)
-        setArrowTopPosition(`${Math.max(15, Math.min(tooltipHeight - 15, arrowTop))}px`)
-        setArrowLeftPosition('auto') // Not used for left/right positioning
-      }
+        break;
+        
+      case 'right':
+        left = rect.right + 16;
+        top = (rect.top + rect.bottom) / 2 - tooltipHeight / 2;
+        
+        // Fallback if tooltip would be cut off at the right
+        if (left + tooltipWidth > windowWidth - 10) {
+          position = 'left';
+          left = rect.left - tooltipWidth - 16;
+          
+          // If still doesn't fit, try top or bottom
+          if (left < 10) {
+            if (rect.top > windowHeight / 2) {
+              position = 'top';
+              left = (rect.left + rect.right) / 2 - tooltipWidth / 2;
+              top = rect.top - tooltipHeight - 16;
+            } else {
+              position = 'bottom';
+              left = (rect.left + rect.right) / 2 - tooltipWidth / 2;
+              top = rect.bottom + 16;
+            }
+          }
+        }
+        break;
     }
     
-    // Additional horizontal boundary checks for top/bottom positioning
-    if (actualPosition === 'top' || actualPosition === 'bottom') {
-      const leftValue = parseInt(String(position.left), 10)
-      if (isNaN(leftValue)) {
-        // Fallback if parsing fails
-        position.left = '50%'
-        position.transform = 'translateX(-50%)'
-      } else if (leftValue - (tooltipWidth / 2) < (isSmallScreen ? 15 : 25)) {
-        // Too close to left edge
-        position.left = isSmallScreen ? '15px' : '25px'
-        position.transform = 'none'
-        
-        // Calculate arrow position relative to repositioned tooltip
-        const arrowLeftOffset = targetCenterX - parseInt(String(position.left), 10)
-        setArrowLeftPosition(`${Math.max(15, Math.min(tooltipWidth - 15, arrowLeftOffset))}px`)
-      } else if (leftValue + (tooltipWidth / 2) > viewportWidth - (isSmallScreen ? 15 : 25)) {
-        // Too close to right edge
-        position.left = `${viewportWidth - tooltipWidth - (isSmallScreen ? 15 : 25)}px`
-        position.transform = 'none'
-        
-        // Calculate arrow position relative to repositioned tooltip
-        const tooltipLeft = viewportWidth - tooltipWidth - (isSmallScreen ? 15 : 25)
-        const arrowLeftOffset = targetCenterX - tooltipLeft
-        setArrowLeftPosition(`${Math.max(15, Math.min(tooltipWidth - 15, arrowLeftOffset))}px`)
-      }
+    // Final bounds checking to ensure tooltip is visible on screen
+    if (left !== undefined) {
+      if (left < 10) left = 10;
+      if (left + tooltipWidth > windowWidth - 10) left = windowWidth - tooltipWidth - 10;
+    }
+    if (top !== undefined) {
+      if (top < 10) top = 10;
+      if (top + tooltipHeight > windowHeight - 10) top = windowHeight - tooltipHeight - 10;
     }
     
-    // Store final position and type
-    setTooltipPosition(actualPosition)
-    setTooltipStyle(position)
-  }, [step.position, step.id, targetElement]);
+    // Update the position for the arrow
+    setTooltipPosition(position);
+    
+    // Update arrow position
+    if (left !== undefined && top !== undefined) {
+      const arrowLeft = (rect.left + rect.right) / 2 - left;
+      const arrowTop = (rect.top + rect.bottom) / 2 - top;
+      setArrowLeftPosition(`${arrowLeft}px`);
+      setArrowTopPosition(`${arrowTop}px`);
+    }
+    
+    return { left, top };
+  }, [targetElement, step.position, step.targetSelector]);
 
   // Update target element and position when step changes or on resize/scroll
   useEffect(() => {
@@ -524,7 +459,9 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
             "shadow-[0_0_15px_rgba(0,0,0,0.1),0_0_3px_rgba(0,0,0,0.05)]",
             step.position === 'center' 
               ? "max-w-[95vw] sm:max-w-md md:max-w-lg mx-auto" 
-              : "max-w-[95vw] sm:max-w-sm md:max-w-md"
+              : "max-w-[95vw] sm:max-w-sm md:max-w-md",
+            // Additional responsive classes for mobile
+            "xs:p-4 p-3"
           )}
           style={tooltipStyle}
           initial={{ opacity: 0, scale: 0.92, y: 8 }}
@@ -554,62 +491,62 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
           )}
           
           {/* Tooltip Header */}
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               <div className="bg-primary/15 text-primary p-1.5 sm:p-2 rounded-full">
                 {step.icon}
               </div>
-              <h3 className="font-semibold text-base sm:text-lg text-foreground">{step.title}</h3>
+              <h3 className="font-semibold text-sm sm:text-base md:text-lg text-foreground">{step.title}</h3>
             </div>
             <Button 
               size="icon" 
               variant="ghost" 
-              className="h-7 w-7 rounded-full -mr-1 -mt-1 hover:bg-muted/80"
+              className="h-6 w-6 sm:h-7 sm:w-7 rounded-full -mr-1 -mt-1 hover:bg-muted/80"
               onClick={completeOnboarding}
             >
-              <X className="h-4 w-4" />
+              <X className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="sr-only">Close</span>
             </Button>
           </div>
           
           {/* Tooltip Content */}
-          <p className="text-sm sm:text-base leading-relaxed text-foreground/80 mb-4 sm:mb-5">
+          <p className="text-xs sm:text-sm md:text-base leading-relaxed text-foreground/80 mb-3 sm:mb-4">
             {step.description}
           </p>
           
           {/* Tooltip Controls */}
-          <div className="flex items-center justify-between mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-border/40">
-            <div className="flex gap-1.5">
+          <div className="flex items-center justify-between mt-2 sm:mt-3 pt-2 border-t border-border/40">
+            <div className="flex gap-1">
               {ONBOARDING_STEPS.map((_, index) => (
                 <div 
                   key={index} 
                   className={cn(
-                    "h-2 rounded-full transition-all duration-300",
+                    "h-1.5 sm:h-2 rounded-full transition-all duration-300",
                     index === currentStep
-                      ? "w-8 bg-primary" 
+                      ? "w-6 sm:w-8 bg-primary" 
                       : onboardingState.completedSteps.includes(ONBOARDING_STEPS[index].id) 
-                        ? "w-2.5 bg-primary/40 cursor-pointer hover:bg-primary/60"
-                        : "w-2.5 bg-muted cursor-pointer hover:bg-primary/40"
+                        ? "w-2 sm:w-2.5 bg-primary/40 cursor-pointer hover:bg-primary/60"
+                        : "w-2 sm:w-2.5 bg-muted cursor-pointer hover:bg-primary/40"
                   )}
                   onClick={() => setCurrentStep(index)}
                 />
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 sm:gap-2">
               {currentStep > 0 && (
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={handlePrevious}
-                  className="px-3 h-9"
+                  className="px-2 sm:px-3 h-7 sm:h-9 text-xs sm:text-sm"
                 >
-                  Previous
+                  Prev
                 </Button>
               )}
               <Button 
                 size="sm" 
                 onClick={handleNext}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 h-9"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 sm:px-4 h-7 sm:h-9 text-xs sm:text-sm"
               >
                 {currentStep === ONBOARDING_STEPS.length - 1 ? "Finish" : "Next"}
               </Button>
