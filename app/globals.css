@@ -50,6 +50,29 @@ svg.markmap .markmap-node-text {
   fill: white !important;
 }
 
+/* Support styling for the node background boxes */
+svg.markmap g.markmap-node {
+  position: relative;
+}
+
+/* Style for the background rectangles */
+svg.markmap .markmap-node-bg {
+  pointer-events: none; /* Allow clicks to pass through to text */
+}
+
+/* Ensure text is on top and doesn't have a default background */
+svg.markmap g.markmap-node text {
+  background: transparent !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* Style based on node level */
+svg.markmap g.markmap-node.markmap-node-depth-1 text {
+  font-weight: 600 !important;
+  padding: 6px 10px !important;
+}
+
 @theme {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

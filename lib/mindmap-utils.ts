@@ -2,6 +2,7 @@ import { Markmap } from 'markmap-view';
 import { RefObject } from 'react';
 import { transformer } from './markmap';
 import { toast } from 'sonner';
+import { addNodeBoxes } from './mindmap-node-boxes';
 
 // Theme-related utilities
 export const applyThemeStyles = (
@@ -38,6 +39,9 @@ export const applyThemeStyles = (
     }
   `;
   document.head.appendChild(textStyle);
+  
+  // Add boxes around nodes
+  addNodeBoxes(svg, theme);
 };
 
 // Enhanced fit function that properly scales the content based on its size

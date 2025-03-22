@@ -3,6 +3,7 @@ import { Markmap } from 'markmap-view';
 import { Transformer } from 'markmap-lib';
 import { applyTextStyles } from '@/lib/theme-utils';
 import { toggleFullscreen } from '@/lib/mindmap-utils';
+import { addNodeBoxes } from '@/lib/mindmap-node-boxes';
 
 const transformer = new Transformer();
 
@@ -39,10 +40,18 @@ export const useMindmap = (
         setTimeout(() => {
           markmapInstance.fit();
           
-          // Apply text styles after rendering
+          // Apply text styles and node boxes after rendering
           if (svgRef.current) {
             applyTextStyles(svgRef.current, theme);
+            addNodeBoxes(svgRef.current, theme);
           }
+          
+          // Apply again after a slight delay to ensure proper rendering
+          setTimeout(() => {
+            if (svgRef.current) {
+              addNodeBoxes(svgRef.current, theme);
+            }
+          }, 500);
         }, 100);
       } catch (error) {
         console.error('Error transforming mindmap data:', error);
@@ -148,21 +157,22 @@ export const useMindmap = (
         }
       }
       
-      // Re-apply text styles after zooming (with slight delay to ensure transition completes)
+      // Re-apply text styles and node boxes after zooming
       setTimeout(() => {
         if (svgRef.current) {
           applyTextStyles(svgRef.current, theme);
+          addNodeBoxes(svgRef.current, theme);
           
           // Also reapply at progressive intervals to ensure styling sticks
           setTimeout(() => {
             if (svgRef.current) {
-              applyTextStyles(svgRef.current, theme);
+              addNodeBoxes(svgRef.current, theme);
             }
           }, 200);
           
           setTimeout(() => {
             if (svgRef.current) {
-              applyTextStyles(svgRef.current, theme);
+              addNodeBoxes(svgRef.current, theme);
             }
           }, 500);
         }

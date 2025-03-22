@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const referrerFromHeader = request.headers.get('referer') || undefined;
     
     // Save the anonymous mindmap data
-    const newAnonymousData = await db
+    await db
       .insert(anonymousMindmaps)
       .values({
         id,

@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { ZoomIn, ZoomOut, RefreshCw, Undo2 } from 'lucide-react';
 import { Button } from './button';
 import * as d3 from 'd3';
+import { applyTextStyles } from '@/lib/theme-utils';
+import { initializeMarkmap } from '@/lib/mindmap-utils';
 
 // Define a type for Hammer
 interface HammerManager {
@@ -210,6 +212,21 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
       setPanOffset({ x: 0, y: 0 });
     }
   };
+
+  // Add this effect to reapply styles when theme changes
+  useEffect(() => {
+    if (markmapInstance && ref && 'current' in ref && ref.current) {
+      // Reapply all styling when theme changes
+      applyTextStyles(ref.current, theme);
+      
+      // Slightly delay adding node boxes to ensure theme is properly applied
+      setTimeout(() => {
+        if (ref && 'current' in ref && ref.current) {
+          initializeMarkmap(mindmapData || '', ref, { current: markmapInstance }, containerRef, theme);
+        }
+      }, 100);
+    }
+  }, [theme, markmapInstance, mindmapData]);
 
   if (!mindmapData) {
     return null;
