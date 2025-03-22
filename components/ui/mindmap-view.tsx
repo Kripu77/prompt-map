@@ -10,7 +10,7 @@ import { useDraggableToolbar } from '@/hooks/use-draggable-toolbar';
 import { MindmapToolbar } from './mindmap-toolbar';
 import {  fitContent } from '@/lib/mindmap-utils';
 import { cn } from '@/lib/utils';
-import { ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RefreshCw, Undo2 } from 'lucide-react';
 import { Button } from './button';
 import * as d3 from 'd3';
 
@@ -40,6 +40,7 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const hammerRef = useRef<HammerManager | null>(null);
+  const [toolbarOffscreen, setToolbarOffscreen] = useState(false);
   
   // Setup fullscreen styles
   useEffect(() => {
@@ -78,7 +79,8 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
   const { 
     position: toolbarPosition, 
     resetPosition,
-    isFirstVisit
+    isFirstVisit,
+    handleResizeStart
   } = useDraggableToolbar(
     toolbarRef,
     containerRef
@@ -156,6 +158,36 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
     }
   }, [isMobile, markmapInstance, mindmapData, ref]);
   
+  // Check if toolbar is mostly offscreen and show recovery button
+  useEffect(() => {
+    if (!isMobile && toolbarRef.current && containerRef.current) {
+      const checkToolbarPosition = () => {
+        const containerRect = containerRef.current?.getBoundingClientRect();
+        const toolbarRect = toolbarRef.current?.getBoundingClientRect();
+        
+        if (containerRect && toolbarRect) {
+          // Check if toolbar is mostly outside viewport or container
+          const isMostlyOffscreen = 
+            toolbarRect.left > containerRect.right - 40 ||
+            toolbarRect.right < containerRect.left + 40 ||
+            toolbarRect.top > containerRect.bottom - 40 ||
+            toolbarRect.bottom < containerRect.top + 40;
+            
+          setToolbarOffscreen(isMostlyOffscreen);
+        }
+      };
+      
+      // Check initial position
+      checkToolbarPosition();
+      
+      // Create a mutation observer to detect toolbar position changes
+      const observer = new MutationObserver(checkToolbarPosition);
+      observer.observe(toolbarRef.current, { attributes: true, attributeFilter: ['style'] });
+      
+      return () => observer.disconnect();
+    }
+  }, [isMobile]);
+  
   // Handlers for mindmap controls
   const handleZoomIn = () => {
     const newScale = Math.min(3, scale * 1.25);
@@ -191,10 +223,15 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
         // Only apply scaling on desktop when sidebar is open
         !isMobile && isOpen && "md:scale-[0.85] md:transform-gpu transition-transform duration-300 ease-in-out",
         // Make container touchable on mobile
-        isMobile && "touch-manipulation"
+        isMobile && "touch-manipulation",
+        // Add overflow visible to allow toolbar to move outside
+        "overflow-visible isolate"
       )}
       style={{ 
         transformOrigin: "center center",
+        position: "relative", // Ensure proper positioning context
+        zIndex: 10, // Create stacking context
+        padding: "30px", // Add padding to make it easier to grab toolbar when positioned outside
       }}
       ref={containerRef}
     >
@@ -247,7 +284,22 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
           onFullscreenToggle={handleFullscreenToggle}
           onResetPosition={resetPosition}
           isFirstVisit={isFirstVisit}
+          handleResizeStart={handleResizeStart}
         />
+      )}
+      
+      {/* Reset button for offscreen toolbar */}
+      {!isMobile && toolbarOffscreen && (
+        <Button
+          size="sm"
+          variant="secondary"
+          className="absolute top-4 right-4 h-8 w-8 rounded-full shadow-lg bg-primary text-primary-foreground z-50 animate-pulse"
+          onClick={resetPosition}
+          title="Reset toolbar position"
+        >
+          <Undo2 className="h-4 w-4" />
+          <span className="sr-only">Reset toolbar position</span>
+        </Button>
       )}
     </div>
   );

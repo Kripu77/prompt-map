@@ -67,6 +67,7 @@ export function ThreadsSidebar() {
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const loaderRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const hasFetchedRef = useRef<boolean>(false); // Track if we've already fetched threads
   const { threads, isLoading, selectedThread, loadThread, deleteThread, fetchThreads } = useThreads();
   const { isOpen, setIsOpen } = useSidebarStore();
   const { mindmapData, setMindmapData } = useMindmapStore();
@@ -90,10 +91,22 @@ export function ThreadsSidebar() {
   // Refresh threads when the sidebar is opened or when mindmap data changes
   useEffect(() => {
     // Only fetch if the user is authenticated and the sidebar is open
-    if (isAuthenticated && isOpen) {
-      fetchThreads();
+    if (isAuthenticated && isOpen && !isLoading) {
+      // If threads are empty or we haven't fetched yet, fetch them
+      if (threads.length === 0 || !hasFetchedRef.current) {
+        fetchThreads();
+        hasFetchedRef.current = true;
+      }
     }
-  }, [isOpen, isAuthenticated, fetchThreads]);
+  }, [isOpen, isAuthenticated, fetchThreads, threads.length, isLoading]);
+
+  // Check for authentication status changes
+  useEffect(() => {
+    // Reset fetched state when auth status changes
+    if (status === 'unauthenticated') {
+      hasFetchedRef.current = false;
+    }
+  }, [status]);
 
   // Check for mindmap data changes to trigger a refresh
   // This will ensure new mindmaps appear immediately
@@ -103,6 +116,9 @@ export function ThreadsSidebar() {
     // If sidebar is open and we have mindmap data, wait a bit and then refresh
     // The slight delay ensures the backend has time to save the data
     if (isAuthenticated && isOpen && mindmapData) {
+      // Reset the fetched flag to allow a refresh
+      hasFetchedRef.current = false;
+      
       timeoutId = setTimeout(() => {
         fetchThreads();
       }, 1000);
@@ -251,35 +267,6 @@ export function ThreadsSidebar() {
   useEffect(() => {
     setDisplayLimit(12);
   }, [searchQuery, isOpen]);
-
-  // Periodically check if need to load more threads
-  useEffect(() => {
-    const handleScroll = () => {
-      if (isLoading) return;
-      if (!loaderRef.current) return;
-      
-      const loaderElement = loaderRef.current;
-      
-      const observer = new IntersectionObserver((entries) => {
-        const entry = entries[0];
-        if (entry?.isIntersecting) {
-          fetchThreads();
-        }
-      });
-      
-      observer.observe(loaderElement);
-      
-      return () => {
-        // Store loaderRef.current in a variable to avoid the React warning
-        const currentLoader = loaderElement;
-        if (currentLoader) {
-          observer.unobserve(currentLoader);
-        }
-      };
-    };
-    
-    handleScroll();
-  }, [isLoading, fetchThreads]);
 
   // Don't render anything for unauthenticated users or on the sign-in page
   if (!isAuthenticated || pathname.includes("/signin")) {

@@ -6,6 +6,12 @@ interface Position {
   y: number;
 }
 
+// Add a Size interface to track toolbar size
+interface Size {
+  width: number;
+  height: number;
+}
+
 /**
  * Custom hook to make an element draggable within a container
  */
@@ -19,6 +25,11 @@ export const useDraggableToolbar = (
   const [previousPosition, setPreviousPosition] = useState<Position | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isFirstVisit, setIsFirstVisit] = useState<boolean>(false);
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const [toolbarSize, setToolbarSize] = useState<Size>({
+    width: 200,
+    height: 150
+  });
   
   // Helper to detect mobile viewport
   const isMobileViewport = () => {
@@ -35,17 +46,30 @@ export const useDraggableToolbar = (
     return { x: 20, y: 20 };
   };
 
-  // Load saved toolbar position on mount and check for first visit
+  // Load saved toolbar state (position AND size)
   useEffect(() => {
     try {
-      const savedPosition = localStorage.getItem(storageKey);
+      const savedState = localStorage.getItem(storageKey);
       
-      if (savedPosition) {
-        const parsedPosition = JSON.parse(savedPosition);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
         
-        // Validate saved position to make sure it's within viewport
-        const validatedPosition = validatePosition(parsedPosition);
-        setToolbarPosition(validatedPosition);
+        // Load position
+        if (parsedState.position) {
+          const validatedPosition = validatePosition(parsedState.position);
+          setToolbarPosition(validatedPosition);
+        } else if (parsedState.x !== undefined) {
+          // Handle legacy format where position was saved directly
+          const validatedPosition = validatePosition(parsedState);
+          setToolbarPosition(validatedPosition);
+        } else {
+          setToolbarPosition(getDefaultPosition());
+        }
+        
+        // Load size if available
+        if (parsedState.size) {
+          setToolbarSize(parsedState.size);
+        }
       } else {
         // If no saved position, use optimal default position
         setToolbarPosition(getDefaultPosition());
@@ -64,8 +88,8 @@ export const useDraggableToolbar = (
         }, isMobileViewport() ? 3000 : 5000);
       }
     } catch (e) {
-      console.error('Failed to load toolbar position:', e);
-      // Fallback to default position
+      console.error('Failed to load toolbar state:', e);
+      // Fallback to defaults
       setToolbarPosition(getDefaultPosition());
     }
   }, [storageKey]);
@@ -157,21 +181,29 @@ export const useDraggableToolbar = (
 
   // Helper to validate position is within viewport
   const validatePosition = (position: Position): Position => {
-    if (!toolbarRef.current || !containerRef.current) return position;
+    if (!containerRef.current) return position;
     
     const containerRect = containerRef.current.getBoundingClientRect();
-    const toolbarWidth = toolbarRef.current.offsetWidth || 200;
-    const toolbarHeight = toolbarRef.current.offsetHeight || 100;
+    const toolbarWidth = toolbarRef.current?.offsetWidth || 200;
+    const toolbarHeight = toolbarRef.current?.offsetHeight || 100;
     
-    // Ensure toolbar stays within container
-    const validatedX = Math.max(0, Math.min(
+    // Ensure just a small part (10px) of toolbar remains visible
+    // This allows the toolbar to be mostly outside the container while still being accessible
+    const minVisiblePx = 10;
+    
+    // Calculate maximum values that would position the toolbar almost entirely outside
+    const maxX = containerRect.width + toolbarWidth - minVisiblePx;
+    const maxY = containerRect.height + toolbarHeight - minVisiblePx;
+    
+    // Much more permissive validation - allows positioning mostly outside the container
+    const validatedX = Math.max(-toolbarWidth + minVisiblePx, Math.min(
       position.x,
-      containerRect.width - toolbarWidth - 5
+      maxX
     ));
     
-    const validatedY = Math.max(0, Math.min(
+    const validatedY = Math.max(-toolbarHeight + minVisiblePx, Math.min(
       position.y,
-      containerRect.height - toolbarHeight - 5
+      maxY
     ));
     
     return { x: validatedX, y: validatedY };
@@ -190,6 +222,14 @@ export const useDraggableToolbar = (
         const validatedPosition = validatePosition(toolbarPosition);
         toolbarRef.current.style.left = `${validatedPosition.x}px`;
         toolbarRef.current.style.top = `${validatedPosition.y}px`;
+        
+        // Apply size if it was saved
+        if (toolbarSize.width) {
+          toolbarRef.current.style.width = `${toolbarSize.width}px`;
+        }
+        if (toolbarSize.height) {
+          toolbarRef.current.style.height = `${toolbarSize.height}px`;
+        }
         
         // Update state if position was adjusted
         if (validatedPosition.x !== toolbarPosition.x || validatedPosition.y !== toolbarPosition.y) {
@@ -213,16 +253,25 @@ export const useDraggableToolbar = (
           onDrag: (event) => {
             if (toolbarRef.current && containerRef.current) {
               const containerRect = containerRef.current.getBoundingClientRect();
+              const toolbarWidth = toolbarRef.current.offsetWidth || 200;
+              const toolbarHeight = toolbarRef.current.offsetHeight || 100;
               
-              // Get updated position from drag location
-              const nextX = Math.max(0, Math.min(
+              // Minimum visible portion - just 10px to keep it accessible
+              const minVisiblePx = 10;
+              
+              // Calculate maximum values for positioning mostly outside
+              const maxX = containerRect.width + toolbarWidth - minVisiblePx;
+              const maxY = containerRect.height + toolbarHeight - minVisiblePx;
+              
+              // Get updated position from drag location - allow almost full overflow
+              const nextX = Math.max(-toolbarWidth + minVisiblePx, Math.min(
                 event.location.current.input.clientX - containerRect.left - (isMobileViewport() ? 30 : 50), 
-                containerRect.width - (toolbarRef.current.offsetWidth || 200)
+                maxX
               ));
               
-              const nextY = Math.max(0, Math.min(
+              const nextY = Math.max(-toolbarHeight + minVisiblePx, Math.min(
                 event.location.current.input.clientY - containerRect.top - (isMobileViewport() ? 10 : 20), 
-                containerRect.height - (toolbarRef.current.offsetHeight || 200)
+                maxY
               ));
               
               // Update position
@@ -278,9 +327,100 @@ export const useDraggableToolbar = (
     }
   };
 
+  const handleResizeStart = () => {
+    setIsResizing(true);
+    
+    const handleResizeMove = (e: MouseEvent) => {
+      if (isResizing && toolbarRef.current && containerRef.current) {
+        e.preventDefault();
+        
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const toolbarRect = toolbarRef.current.getBoundingClientRect();
+        
+        // Calculate new size based on mouse position
+        const newWidth = Math.max(150, Math.min(
+          e.clientX - toolbarRect.left,
+          containerRect.width * 0.9
+        ));
+        
+        const newHeight = Math.max(80, Math.min(
+          e.clientY - toolbarRect.top,
+          containerRect.height * 0.9
+        ));
+        
+        // Apply size directly for smooth resizing
+        toolbarRef.current.style.width = `${newWidth}px`;
+        toolbarRef.current.style.height = `${newHeight}px`;
+      }
+    };
+    
+    const handleResizeTouchMove = (e: TouchEvent) => {
+      if (isResizing && toolbarRef.current && containerRef.current && e.touches.length > 0) {
+        e.preventDefault();
+        
+        const touch = e.touches[0];
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const toolbarRect = toolbarRef.current.getBoundingClientRect();
+        
+        // Calculate new size based on touch position
+        const newWidth = Math.max(150, Math.min(
+          touch.clientX - toolbarRect.left,
+          containerRect.width * 0.9
+        ));
+        
+        const newHeight = Math.max(80, Math.min(
+          touch.clientY - toolbarRect.top,
+          containerRect.height * 0.9
+        ));
+        
+        // Apply size directly for smooth resizing
+        toolbarRef.current.style.width = `${newWidth}px`;
+        toolbarRef.current.style.height = `${newHeight}px`;
+      }
+    };
+    
+    const handleResizeEnd = () => {
+      setIsResizing(false);
+      
+      // Get current size from DOM
+      if (toolbarRef.current) {
+        const newSize = {
+          width: toolbarRef.current.offsetWidth,
+          height: toolbarRef.current.offsetHeight
+        };
+        
+        // Update state
+        setToolbarSize(newSize);
+        
+        // Save to localStorage, including both position and size
+        try {
+          localStorage.setItem(storageKey, JSON.stringify({
+            position: toolbarPosition,
+            size: newSize
+          }));
+        } catch (e) {
+          console.error('Failed to save toolbar state:', e);
+        }
+      }
+      
+      // Remove event listeners
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+      document.removeEventListener('touchmove', handleResizeTouchMove);
+      document.removeEventListener('touchend', handleResizeEnd);
+    };
+    
+    // Add event listeners
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+    document.addEventListener('touchmove', handleResizeTouchMove, { passive: false });
+    document.addEventListener('touchend', handleResizeEnd);
+  };
+
   return {
     position: toolbarPosition,
     resetPosition,
-    isFirstVisit
+    isFirstVisit,
+    handleResizeStart
   };
 }; 
