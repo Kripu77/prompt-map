@@ -24,6 +24,12 @@ A powerful AI-powered mind mapping tool that transforms text prompts into beauti
    - Personalized experience with saved mindmaps
    - Automatic sidebar opening upon login for improved UX
 
+Core Idea of Atomic Habits
+Stranger Things Netflix Series
+How to get better at Data Structure and Algorithms
+Must know Grammar rules
+How to become a data scientist
+
 ### UI/UX Highlights
 
 4. **Responsive Design**

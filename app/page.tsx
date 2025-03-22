@@ -11,7 +11,10 @@ export default async function Home() {
   return (
     <main className="flex-1 flex flex-col overflow-hidden">
       <MarkmapHooks />
-      <OnboardingGuide userId={userId} />
+      {/* Temporarily hidden on mobile screens */}
+      <div className="hidden md:block">
+        <OnboardingGuide userId={userId} />
+      </div>
     </main>
   );
 }

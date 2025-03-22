@@ -21,8 +21,88 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PromptMap",
-  description: "Generated Mind Map from prompts",
+  title: {
+    default: "PromptMap - AI-Powered Mind Mapping Tool",
+    template: "%s | PromptMap"
+  },
+  description: "Transform your ideas into beautifully organized mind maps instantly with PromptMap. AI-powered mind mapping tool for brainstorming, note-taking, and visualizing concepts.",
+  keywords: ["mind map", "AI mind map", "brainstorming tool", "visual thinking", "concept mapping", "idea organization", "productivity tool", "thought visualization"],
+  authors: [{ name: "PromptMap Team" }],
+  creator: "PromptMap",
+  publisher: "PromptMap",
+  formatDetection: {
+    email: false,
+    telephone: false,
+    address: false,
+  },
+  metadataBase: new URL("https://prompt-map.vercel.app/"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "PromptMap - AI-Powered Mind Mapping Tool",
+    description: "Transform your ideas into beautifully organized mind maps instantly with PromptMap. AI-powered mind mapping tool for brainstorming, note-taking, and visualizing concepts.",
+    url: "https://prompt-map.vercel.app/",
+    siteName: "PromptMap",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "PromptMap - AI-Powered Mind Mapping Tool",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PromptMap - AI-Powered Mind Mapping Tool",
+    description: "Transform your ideas into beautifully organized mind maps instantly with PromptMap",
+    images: ["/twitter-image.png"],
+    creator: "@promptmap",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon-16x16.png",
+    apple: "/apple-touch-icon.png",
+    other: [
+      {
+        rel: "icon",
+        type: "image/png",
+        sizes: "32x32",
+        url: "/favicon-32x32.png",
+      },
+      {
+        rel: "icon",
+        type: "image/png",
+        sizes: "16x16",
+        url: "/favicon-16x16.png",
+      },
+      {
+        rel: "mask-icon",
+        url: "/safari-pinned-tab.svg",
+        color: "#5bbad5",
+      },
+    ],
+  },
+  manifest: "/site.webmanifest",
+  category: "productivity",
 };
 
 export default function RootLayout({
