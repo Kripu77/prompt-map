@@ -1,17 +1,27 @@
 "use client"
 
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Button } from "./button";
+import { Download } from "lucide-react";
+import { useMindmapStore } from "@/lib/store";
+import { useTheme } from "next-themes";
 
 export function Header() {
+
+
+ 
   return (
-    <header className="mb-12 text-center relative border-b border-gray-200 dark:border-gray-800 pb-8 transition-colors duration-200">
-      <h1 className="text-4xl font-extrabold mb-3 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">
-        Mind Map Generator
-      </h1>
-      <p className="text-gray-600 dark:text-gray-400 text-lg">
-        Enter a topic or concept to generate a visual mind map
-      </p>
-      <ThemeToggle />
-    </header>
+    <header className="border-b">
+        <div className="px-8 py-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">Mind Map Generator</h1>
+            <p className="text-muted-foreground">Enter a topic or concept to generate a visual mind map</p>
+          </div>
+          <div className="flex items-center gap-2">
+            
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
   );
 }
