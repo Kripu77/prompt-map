@@ -81,6 +81,7 @@ export function ThreadsSidebar() {
     // Return a cleanup function
     return () => {
       // Use a no-op function instead of null
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const noop = (_value: boolean) => { /* empty function */ };
       setSidebarHandler(noop);
     };
