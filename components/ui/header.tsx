@@ -9,7 +9,7 @@ import { exportMindmap } from "@/lib/mindmap-utils";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { UserNav } from "@/components/user-nav";
-import { useState } from "react";
+
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -67,9 +67,9 @@ export function ThreadsSidebar() {
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const loaderRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { threads, isLoading, selectedThread, loadThread, deleteThread, createThread, fetchThreads } = useThreads();
+  const { threads, isLoading, selectedThread, loadThread, deleteThread, fetchThreads } = useThreads();
   const { isOpen, setIsOpen } = useSidebarStore();
-  const { mindmapData, setMindmapData, setPrompt } = useMindmapStore();
+  const { mindmapData, setMindmapData } = useMindmapStore();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
@@ -81,7 +81,8 @@ export function ThreadsSidebar() {
     // Return a cleanup function
     return () => {
       // Use a no-op function instead of null
-      setSidebarHandler((_: boolean) => {});
+      const noop = (value: boolean) => { /* empty function */ };
+      setSidebarHandler(noop);
     };
   }, [setIsOpen]);
 
@@ -250,6 +251,35 @@ export function ThreadsSidebar() {
     setDisplayLimit(12);
   }, [searchQuery, isOpen]);
 
+  // Periodically check if need to load more threads
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isLoading) return;
+      if (!loaderRef.current) return;
+      
+      const loaderElement = loaderRef.current;
+      
+      const observer = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting) {
+          fetchThreads();
+        }
+      });
+      
+      observer.observe(loaderElement);
+      
+      return () => {
+        // Store loaderRef.current in a variable to avoid the React warning
+        const currentLoader = loaderElement;
+        if (currentLoader) {
+          observer.unobserve(currentLoader);
+        }
+      };
+    };
+    
+    handleScroll();
+  }, [isLoading, fetchThreads]);
+
   // Don't render anything for unauthenticated users or on the sign-in page
   if (!isAuthenticated || pathname.includes("/signin")) {
     return null;
@@ -331,43 +361,6 @@ export function ThreadsSidebar() {
         </div>
       </div>
     );
-  };
-
-  // Periodically check if need to load more threads
-  useEffect(() => {
-    const handleScroll = () => {
-      if (isLoading) return;
-      if (!loaderRef.current) return;
-      
-      const loaderElement = loaderRef.current;
-      
-      const observer = new IntersectionObserver((entries) => {
-        const entry = entries[0];
-        if (entry?.isIntersecting) {
-          fetchThreads();
-        }
-      });
-      
-      observer.observe(loaderElement);
-      
-      return () => {
-        // Store loaderRef.current in a variable to avoid the React warning
-        const currentLoader = loaderElement;
-        if (currentLoader) {
-          observer.unobserve(currentLoader);
-        }
-      };
-    };
-    
-    handleScroll();
-  }, [isLoading, fetchThreads]);
-
-  // Handle mousemove for sidebar resize
-  const sidebarResize = (event: MouseEvent) => {
-    if (!isResizing) return;
-    
-    const newWidth = Math.max(250, Math.min(event.clientX, 600));
-    setSidebarWidth(newWidth);
   };
 
   return (
