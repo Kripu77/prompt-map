@@ -58,7 +58,7 @@ export function PromptInput({
         }}
         className={cn(
           "relative flex items-center rounded-2xl border border-input/40 bg-background/70 p-1 sm:p-2",
-          "backdrop-blur-lg shadow-xl",
+          "backdrop-blur-lg shadow-xl transform-none",
           isFollowUpMode && "border-primary/40"
         )}
       >
