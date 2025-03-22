@@ -81,7 +81,7 @@ export function ThreadsSidebar() {
     // Return a cleanup function
     return () => {
       // Use a no-op function instead of null
-      const noop = (value: boolean) => { /* empty function */ };
+      const noop = (_value: boolean) => { /* empty function */ };
       setSidebarHandler(noop);
     };
   }, [setIsOpen]);
