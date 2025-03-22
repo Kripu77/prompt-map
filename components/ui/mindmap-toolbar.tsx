@@ -59,6 +59,7 @@ export const MindmapToolbar = forwardRef<HTMLDivElement, MindmapToolbarProps>(
           "cursor-grab active:cursor-grabbing z-40 group",
           "hover:bg-background/70 hover:border-white/20 dark:hover:border-white/10",
           "hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-white/5",
+          "draggable-mindmap-toolbar",
           // Add a subtle animation on hover
           "transform-gpu hover:scale-[1.02] transition-transform duration-200"
         )}
