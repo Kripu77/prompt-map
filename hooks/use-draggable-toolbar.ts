@@ -19,13 +19,36 @@ export const useDraggableToolbar = (
   const [previousPosition, setPreviousPosition] = useState<Position | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isFirstVisit, setIsFirstVisit] = useState<boolean>(false);
+  
+  // Helper to detect mobile viewport
+  const isMobileViewport = () => {
+    return typeof window !== 'undefined' && window.innerWidth < 640; // sm breakpoint
+  };
+  
+  // Get optimal default position based on screen size
+  const getDefaultPosition = (): Position => {
+    if (isMobileViewport()) {
+      // For mobile, position at bottom right by default
+      return { x: 20, y: window.innerHeight - 120 };
+    }
+    // For larger screens, use the regular top left position
+    return { x: 20, y: 20 };
+  };
 
   // Load saved toolbar position on mount and check for first visit
   useEffect(() => {
     try {
       const savedPosition = localStorage.getItem(storageKey);
+      
       if (savedPosition) {
-        setToolbarPosition(JSON.parse(savedPosition));
+        const parsedPosition = JSON.parse(savedPosition);
+        
+        // Validate saved position to make sure it's within viewport
+        const validatedPosition = validatePosition(parsedPosition);
+        setToolbarPosition(validatedPosition);
+      } else {
+        // If no saved position, use optimal default position
+        setToolbarPosition(getDefaultPosition());
       }
       
       // Check if this is the first time the user has seen the draggable toolbar
@@ -35,13 +58,15 @@ export const useDraggableToolbar = (
         // Mark that the user has seen the hint
         localStorage.setItem('mindmap-toolbar-hint-shown', 'true');
         
-        // Auto-hide the first-visit hint after 5 seconds
+        // Auto-hide the first-visit hint after 5 seconds, or 3 seconds on mobile
         setTimeout(() => {
           setIsFirstVisit(false);
-        }, 5000);
+        }, isMobileViewport() ? 3000 : 5000);
       }
     } catch (e) {
       console.error('Failed to load toolbar position:', e);
+      // Fallback to default position
+      setToolbarPosition(getDefaultPosition());
     }
   }, [storageKey]);
 
@@ -84,7 +109,11 @@ export const useDraggableToolbar = (
         
         // When entering fullscreen, reset position to a good default
         if (toolbarRef.current && containerRef.current) {
-          const resetPosition = { x: 20, y: 20 };
+          // In fullscreen mode, position differently based on screen size
+          const resetPosition = isMobileViewport()
+            ? { x: 20, y: window.innerHeight - 120 } // Bottom left for mobile
+            : { x: 20, y: 20 }; // Top left for desktop
+            
           setToolbarPosition(resetPosition);
           
           // Apply directly for immediate visual update
@@ -98,6 +127,56 @@ export const useDraggableToolbar = (
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [isFullscreen, previousPosition, toolbarPosition, toolbarRef, containerRef, storageKey]);
 
+  // Ensure the toolbar stays within viewport when screen resizes
+  useEffect(() => {
+    const handleResize = () => {
+      if (toolbarRef.current && containerRef.current) {
+        // Validate and adjust position if needed
+        const validatedPosition = validatePosition(toolbarPosition);
+        
+        if (validatedPosition.x !== toolbarPosition.x || validatedPosition.y !== toolbarPosition.y) {
+          setToolbarPosition(validatedPosition);
+          
+          // Apply directly for immediate visual update
+          toolbarRef.current.style.left = `${validatedPosition.x}px`;
+          toolbarRef.current.style.top = `${validatedPosition.y}px`;
+          
+          // Save to localStorage
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(validatedPosition));
+          } catch (e) {
+            console.error('Failed to save adjusted toolbar position:', e);
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [toolbarPosition, toolbarRef, containerRef, storageKey]);
+
+  // Helper to validate position is within viewport
+  const validatePosition = (position: Position): Position => {
+    if (!toolbarRef.current || !containerRef.current) return position;
+    
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const toolbarWidth = toolbarRef.current.offsetWidth || 200;
+    const toolbarHeight = toolbarRef.current.offsetHeight || 100;
+    
+    // Ensure toolbar stays within container
+    const validatedX = Math.max(0, Math.min(
+      position.x,
+      containerRect.width - toolbarWidth - 5
+    ));
+    
+    const validatedY = Math.max(0, Math.min(
+      position.y,
+      containerRect.height - toolbarHeight - 5
+    ));
+    
+    return { x: validatedX, y: validatedY };
+  };
+
   // Set up the draggable toolbar
   useEffect(() => {
     if (!toolbarRef.current || !containerRef.current) return;
@@ -108,8 +187,14 @@ export const useDraggableToolbar = (
     setTimeout(() => {
       if (toolbarRef.current) {
         // Apply the current position immediately
-        toolbarRef.current.style.left = `${toolbarPosition.x}px`;
-        toolbarRef.current.style.top = `${toolbarPosition.y}px`;
+        const validatedPosition = validatePosition(toolbarPosition);
+        toolbarRef.current.style.left = `${validatedPosition.x}px`;
+        toolbarRef.current.style.top = `${validatedPosition.y}px`;
+        
+        // Update state if position was adjusted
+        if (validatedPosition.x !== toolbarPosition.x || validatedPosition.y !== toolbarPosition.y) {
+          setToolbarPosition(validatedPosition);
+        }
         
         dragCleanup = draggable({
           element: toolbarRef.current,
@@ -131,12 +216,12 @@ export const useDraggableToolbar = (
               
               // Get updated position from drag location
               const nextX = Math.max(0, Math.min(
-                event.location.current.input.clientX - containerRect.left - 50, 
+                event.location.current.input.clientX - containerRect.left - (isMobileViewport() ? 30 : 50), 
                 containerRect.width - (toolbarRef.current.offsetWidth || 200)
               ));
               
               const nextY = Math.max(0, Math.min(
-                event.location.current.input.clientY - containerRect.top - 20, 
+                event.location.current.input.clientY - containerRect.top - (isMobileViewport() ? 10 : 20), 
                 containerRect.height - (toolbarRef.current.offsetHeight || 200)
               ));
               
@@ -174,7 +259,7 @@ export const useDraggableToolbar = (
   }, [containerRef, toolbarRef, toolbarPosition, storageKey]);
 
   const resetPosition = () => {
-    const defaultPosition = { x: 20, y: 20 };
+    const defaultPosition = getDefaultPosition();
     
     // Update state
     setToolbarPosition(defaultPosition);
