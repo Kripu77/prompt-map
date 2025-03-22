@@ -15,6 +15,7 @@ import { Button } from './button';
 import * as d3 from 'd3';
 import { applyTextStyles } from '@/lib/theme-utils';
 import { initializeMarkmap } from '@/lib/mindmap-utils';
+import { Markmap } from 'markmap-view';
 
 // Define a type for Hammer
 interface HammerManager {
@@ -214,19 +215,26 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
   };
 
   // Add this effect to reapply styles when theme changes
-  useEffect(() => {
-    if (markmapInstance && ref && 'current' in ref && ref.current) {
-      // Reapply all styling when theme changes
-      applyTextStyles(ref.current, theme);
-      
-      // Slightly delay adding node boxes to ensure theme is properly applied
-      setTimeout(() => {
-        if (ref && 'current' in ref && ref.current) {
-          initializeMarkmap(mindmapData || '', ref, { current: markmapInstance }, containerRef, theme);
-        }
-      }, 100);
-    }
-  }, [theme, markmapInstance, mindmapData]);
+ // Add this effect to reapply styles when theme changes
+ useEffect(() => {
+  if (markmapInstance && ref && 'current' in ref && ref.current) {
+    // Reapply all styling when theme changes
+    applyTextStyles(ref.current, theme);
+    
+    // Slightly delay adding node boxes to ensure theme is properly applied
+    setTimeout(() => {
+      if (ref && 'current' in ref && ref.current) {
+        initializeMarkmap(
+          mindmapData || '', 
+          ref, 
+          { current: markmapInstance as unknown as Markmap }, // Cast to expected type
+          containerRef, 
+          theme
+        );
+      }
+    }, 100);
+  }
+}, [theme, markmapInstance, mindmapData, ref, containerRef]);
 
   if (!mindmapData) {
     return null;
@@ -292,7 +300,7 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
         <MindmapToolbar
           ref={toolbarRef}
           svgRef={ref as React.RefObject<SVGSVGElement | null>}
-          markmapInstance={markmapInstance}
+          markmapInstance={markmapInstance as Markmap | null}
           toolbarPosition={toolbarPosition}
           isFullscreen={isFullscreen}
           theme={theme}

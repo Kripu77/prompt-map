@@ -5,7 +5,7 @@ interface PromptPayload {
   prompt: string
   context?: {
     originalPrompt?: string
-    existingMindmap?: any
+    existingMindmap?: unknown // Changed from any
     previousPrompts?: string[]
     isFollowUp?: boolean
     checkTopicShift?: boolean
@@ -17,13 +17,12 @@ interface TopicShiftResponse {
 }
 
 interface MindmapResponse {
-  content: any
+  content: unknown // Changed from any
 }
-
 
 interface AnonymousMindmapData {
     prompt: string;
-    content: any;
+    content: string;
     title: string;
     sessionId: string;
     userAgent: string;
@@ -93,7 +92,8 @@ export function useGenerateMindmap() {
     });
     
     if (!response.ok) {
-      throw new Error('Failed to record mindmap analytics');
+      const errorData = await response.json() as ErrorResponse; // Changed from any
+      throw new Error(errorData.error || errorData.message || 'Failed to record mindmap analytics');
     }
     
     return true;
@@ -164,4 +164,9 @@ export async function deleteThreadAPI(id: string): Promise<{ success: boolean }>
   }
   
   return { success: true };
+}
+
+interface ErrorResponse {
+  error?: string;
+  message?: string;
 }

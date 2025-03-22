@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useAnonymousAnalytics } from '@/hooks/use-anonymous-analytics';
+import { useCheckTopicShift, useGenerateMindmap } from '@/lib/api/mindmap';
 
 // Interface for prompt history
 interface PromptHistoryItem {
@@ -42,6 +43,10 @@ export default function MarkmapHooks() {
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [pendingFollowUp, setPendingFollowUp] = useState<boolean>(false);
+
+  // Use Tanstack Query mutations
+  const topicShiftMutation = useCheckTopicShift();
+  const mindmapMutation = useGenerateMindmap();
 
   // Get the title to display - use the improved title generation function that extracts title from mindmap content
   const mapTitle = mindmapData 
@@ -189,44 +194,22 @@ export default function MarkmapHooks() {
       if (isFollowUp && isUserGenerated) {
         const shiftCheckPayload = generatePromptPayload(value, true, true);
         
-        const shiftCheckResponse = await fetch('/api/check-topic-shift', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(shiftCheckPayload),
-        });
+        const result = await topicShiftMutation.mutateAsync(shiftCheckPayload);
         
-        if (shiftCheckResponse.ok) {
-          const shiftCheckData = await shiftCheckResponse.json();
-          
-          if (shiftCheckData.isTopicShift) {
-            // Store the prompt for later use
-            setPendingPrompt(value);
-            setPendingFollowUp(isFollowUp);
-            setTopicShiftDetected(true);
-            setIsLoading(false);
-            return;
-          }
+        if (result.isTopicShift) {
+          // Store the prompt for later use
+          setPendingPrompt(value);
+          setPendingFollowUp(isFollowUp);
+          setTopicShiftDetected(true);
+          setIsLoading(false);
+          return;
         }
       }
       
       // No topic shift detected, proceed with normal processing
       const payload = generatePromptPayload(value, isFollowUp);
       
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate mind map');
-      }
-      
-      const data = await response.json();
+      const data = await mindmapMutation.mutateAsync(payload);
       
       if (data.content) {
         setMindmapData(data.content);
