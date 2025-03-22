@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useMindmapStore } from '@/lib/store';
 import { MindmapView } from '@/components/ui/mindmap-view';
 import { PromptInput } from '@/components/ui/prompt-input';
-import { LoaderCircle, Sparkles, CornerDownLeft, AlertCircle, LogIn, Info } from 'lucide-react';
+import { LoaderCircle, Sparkles, CornerDownLeft, AlertCircle, Info } from 'lucide-react';
 import { generateTitleFromPrompt, extractMindmapTitle } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -35,11 +35,11 @@ export default function MarkmapHooks() {
   const [promptHistory, setPromptHistory] = useState<PromptHistoryItem[]>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState<boolean>(false);
   const [isUserGenerated, setIsUserGenerated] = useState<boolean>(false);
-  const [showLoginNotification, setShowLoginNotification] = useState<boolean>(false);
   
   // New state for topic shift detection
   const [topicShiftDetected, setTopicShiftDetected] = useState<boolean>(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [pendingFollowUp, setPendingFollowUp] = useState<boolean>(false);
 
   // Get the title to display - use the improved title generation function that extracts title from mindmap content

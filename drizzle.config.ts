@@ -11,6 +11,6 @@ export default {
   out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
-    connectionString: process.env.NEON_CONNECTION_STRING,
+    url: process.env.NEON_CONNECTION_STRING,
   },
 } satisfies Config; 

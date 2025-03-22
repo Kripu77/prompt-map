@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -6,10 +6,12 @@ import { conversations } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 
 export async function GET(
-  _: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest
 ) {
   try {
+    // Extract id from the URL pathname
+    const id = request.nextUrl.pathname.split('/').pop();
+    
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
@@ -17,12 +19,12 @@ export async function GET(
     }
     
     const userId = session.user.id;
-    const threadId = params.id;
+    const threadId = id;
     
     // Fetch the specific thread and ensure it belongs to the user
     const thread = await db.query.conversations.findFirst({
       where: and(
-        eq(conversations.id, threadId),
+        eq(conversations.id, threadId!),
         eq(conversations.userId, userId)
       ),
     });
@@ -42,10 +44,12 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest
 ) {
   try {
+    // Extract id from the URL pathname
+    const id = request.nextUrl.pathname.split('/').pop();
+    
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
@@ -53,12 +57,12 @@ export async function PUT(
     }
     
     const userId = session.user.id;
-    const threadId = params.id;
+    const threadId = id;
     
     // Check if thread exists and belongs to user
     const existingThread = await db.query.conversations.findFirst({
       where: and(
-        eq(conversations.id, threadId),
+        eq(conversations.id, threadId!),
         eq(conversations.userId, userId)
       ),
     });
@@ -84,7 +88,7 @@ export async function PUT(
         ...(content && { content }),
         updatedAt: new Date(),
       })
-      .where(eq(conversations.id, threadId))
+      .where(eq(conversations.id, threadId!))
       .returning();
     
     return NextResponse.json({ thread: updatedThread[0] });
@@ -98,10 +102,12 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest
 ) {
   try {
+    // Extract id from the URL pathname
+    const id = request.nextUrl.pathname.split('/').pop();
+    
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
@@ -109,12 +115,12 @@ export async function DELETE(
     }
     
     const userId = session.user.id;
-    const threadId = params.id;
+    const threadId = id;
     
     // Check if thread exists and belongs to user
     const existingThread = await db.query.conversations.findFirst({
       where: and(
-        eq(conversations.id, threadId),
+        eq(conversations.id, threadId!),
         eq(conversations.userId, userId)
       ),
     });
@@ -126,7 +132,7 @@ export async function DELETE(
     // Delete the thread
     await db
       .delete(conversations)
-      .where(eq(conversations.id, threadId));
+      .where(eq(conversations.id, threadId!));
     
     return NextResponse.json({ success: true });
   } catch (error) {
