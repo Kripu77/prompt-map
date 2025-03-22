@@ -7,6 +7,8 @@ import { ThreadsSidebar } from "@/components/ui/threads-sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { ScalableContent } from "@/components/ui/scalable-content";
 import { AuthSidebarProvider } from "@/components/auth-sidebar-provider";
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css";
 import "@/lib/markmap-defaults";
 
@@ -120,7 +122,8 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
-        >
+        ><Analytics/> 
+        <SpeedInsights/>
           <SessionProvider>
             <AuthSidebarProvider>
               <div className="flex min-h-screen flex-col">
