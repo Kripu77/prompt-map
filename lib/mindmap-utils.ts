@@ -304,6 +304,14 @@ export const toggleFullscreen = (
   
   try {
     if (!document.fullscreenElement) {
+      // Add current theme class to the element before entering fullscreen
+      const isDarkTheme = document.documentElement.classList.contains('dark');
+      
+      // Clear existing theme classes and add the current one
+      element.classList.remove('light-theme', 'dark-theme');
+      element.classList.add(isDarkTheme ? 'dark-theme' : 'light-theme');
+      
+      // Request fullscreen
       element.requestFullscreen().catch(err => {
         console.error(`Error attempting to enable fullscreen: ${err.message}`);
       });

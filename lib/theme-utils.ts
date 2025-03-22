@@ -4,10 +4,12 @@
 
 /**
  * Applies theme-specific styles to SVG text elements
+ * Note: Direct DOM manipulation is still needed for SVG elements as Tailwind classes cannot
+ * be directly applied to dynamically created SVG elements in this context
  */
 export const applyTextStyles = (svg: SVGSVGElement, currentTheme: string | undefined) => {
   // Set a stronger text color based on theme
-  const textColor = currentTheme === 'dark' ? '#ffffff' : '#000000';
+  const textColor = currentTheme === 'dark' ? 'hsl(var(--foreground))' : 'hsl(var(--foreground))';
   
   // Apply global styles for the markmap
   const markmapStyle = document.getElementById('markmap-dynamic-style');
@@ -27,6 +29,7 @@ export const applyTextStyles = (svg: SVGSVGElement, currentTheme: string | undef
       fill: ${textColor} !important;
       color: ${textColor} !important;
       stroke: none !important;
+      font-family: var(--font-sans);
     }
   `;
   document.head.appendChild(styleElement);
@@ -53,31 +56,77 @@ export const applyTextStyles = (svg: SVGSVGElement, currentTheme: string | undef
 };
 
 /**
- * Sets up fullscreen mode styles
+ * Sets up fullscreen mode styles that respect the current theme
  */
 export const setupFullscreenStyles = () => {
-  const fullscreenStyle = document.getElementById('mindmap-fullscreen-style');
-  if (!fullscreenStyle) {
-    const styleEl = document.createElement('style');
-    styleEl.id = 'mindmap-fullscreen-style';
-    styleEl.innerHTML = `
-      .fullscreen-mindmap {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        height: 100% !important;
-        width: 100% !important;
-        padding: 20px !important;
-      }
-      .fullscreen-mindmap svg.markmap {
-        height: 100% !important;
-        width: 100% !important;
-        max-height: 100vh !important;
-        max-width: 100vw !important;
-      }
-    `;
-    document.head.appendChild(styleEl);
+  // Clean up existing styles if present
+  const existingStyle = document.getElementById('mindmap-fullscreen-style');
+  if (existingStyle) {
+    document.head.removeChild(existingStyle);
   }
+  
+  // Create fullscreen styles with explicit light and dark mode handling
+  const styleEl = document.createElement('style');
+  styleEl.id = 'mindmap-fullscreen-style';
+  styleEl.innerHTML = `
+    /* Base styles for fullscreen mode */
+    .fullscreen-mindmap {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 50 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 20px !important;
+      /* Default to dark background as fallback */
+      background-color: #121212 !important;
+    }
+    
+    /* Using explicit theme classes applied to the element directly */
+    .fullscreen-mindmap.light-theme {
+      background-color: white !important;
+    }
+    
+    .fullscreen-mindmap.dark-theme {
+      background-color: #121212 !important;
+    }
+    
+    /* Also keep the root-based selectors for compatibility */
+    :root:not(.dark) .fullscreen-mindmap {
+      background-color: white !important;
+    }
+    
+    .dark .fullscreen-mindmap {
+      background-color: #121212 !important;
+    }
+    
+    .fullscreen-mindmap svg.markmap {
+      height: 100% !important;
+      width: 100% !important;
+      max-height: 100vh !important;
+      max-width: 100vw !important;
+    }
+  `;
+  document.head.appendChild(styleEl);
+  
+  // Update the current document body with the theme indicator class
+  // This ensures the fullscreen styles can target the current theme
+  const updateThemeIndicator = () => {
+    const isDarkTheme = document.documentElement.classList.contains('dark');
+    if (isDarkTheme) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+  
+  // Call immediately and set up an observer for theme changes
+  updateThemeIndicator();
   
   return () => {
     const styleEl = document.getElementById('mindmap-fullscreen-style');

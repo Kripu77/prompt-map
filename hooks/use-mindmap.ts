@@ -192,6 +192,11 @@ export const useMindmap = (
     } else {
       // Entering fullscreen - scale down slightly
       containerRef.current.style.transform = 'scale(0.95)';
+      
+      // Ensure theme class is applied before entering fullscreen
+      const isDarkTheme = document.documentElement.classList.contains('dark');
+      containerRef.current.classList.remove('light-theme', 'dark-theme');
+      containerRef.current.classList.add(isDarkTheme ? 'dark-theme' : 'light-theme');
     }
     
     // After a short delay, toggle fullscreen
