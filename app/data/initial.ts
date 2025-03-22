@@ -1,55 +1,34 @@
-export const initalMindMapValue = `# Atomic Habits
+export const initialMindMapValue = `# 🧠 AI-Powered Mind Map Generator  
 
-- ## Core Concept
-  - Small changes lead to big results
-  - Focus on systems, not goals
-  - Habits compound over time
+- ## 🚀 Transform Ideas Instantly  
+  - Convert thoughts into structured visuals effortlessly  
+  - Simplify brainstorming, planning, and organization  
 
-- ## 4 Laws of Behavior Change
-  - ### 1. Make it Obvious
-    - Cues trigger habits
-    - Habit stacking
-    - Design your environment
-    - Awareness of current habits (Habit Scorecard)
-  - ### 2. Make it Attractive
-    - Dopamine and desire
-    - Temptation bundling
-    - Culture and social influence
-  - ### 3. Make it Easy
-    - Reduce friction
-    - 2-Minute Rule
-    - Law of Least Effort
-    - Automate habits
-  - ### 4. Make it Satisfying
-    - Immediate rewards
-    - Habit tracking
-    - Never miss twice
+- ## ✨ Key Features  
+  - ### 📌 Instant Mind Maps  
+    - Generate structured maps from a simple prompt  
+    - AI organizes your thoughts automatically  
+  - ### 💾 Save & Refine  
+    - Modify and expand your maps easily  
+    - Keep track of evolving ideas  
+  - ### 🎯 Boost Productivity  
+    - Organize information visually  
+    - Enhance clarity and creative thinking  
 
-- ## Identity-Based Habits
-  - Focus on who you want to become
-  - Habits shape identity
-  - Identity reinforces habits
+- ## 🔥 How It Works  
+  - ### 1️⃣ Enter your idea  
+    - Provide a short prompt  
+  - ### 2️⃣ AI generates the structure  
+    - Get an instant mind map  
+  - ### 3️⃣ Refine & expand  
+    - Customize as needed  
 
-- ## The Power of 1% Improvement
-  - Marginal gains
-  - Exponential growth over time
-  - The Plateau of Latent Potential
+- ## 🌟 Perfect For  
+  - 📝 Note-taking & studying  
+  - 🎯 Project planning  
+  - 💡 Brainstorming new ideas  
+  - 📚 Organizing research  
 
-- ## Challenges and Solutions
-  - ### Overcoming lack of motivation
-    - Motivation is fleeting, rely on discipline
-  - ### Dealing with setbacks
-    - Get back on track quickly
-  - ### Plateaus
-    - Stick with it, results lag
-
-- ## Advanced Tactics
-  - The Goldilocks Rule (Optimal challenge level)
-  - Habit tracking with data
-  - Flexibility in systems
-
-- ## Key Takeaways
-  - Consistency beats intensity
-  - Environment > willpower
-  - Time magnifies small habits
-`;
+- ## ⚡ Get Started Now!  
+  - Unleash the power of AI to structure your thoughts effortlessly  
+`;  

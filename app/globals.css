@@ -4,6 +4,52 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Force markmap text to be visible in dark mode by default */
+g.markmap-node > text,
+.markmap-node-text,
+svg.markmap text {
+  fill: white !important;
+  color: white !important;
+}
+
+/* Only change to black in light mode */
+:root:not(.dark) g.markmap-node > text,
+:root:not(.dark) .markmap-node-text,
+:root:not(.dark) svg.markmap text {
+  fill: black !important;
+  color: black !important;
+}
+
+/* Force markmap text to be visible */
+.markmap text {
+  fill: black !important;
+  font-family: var(--font-sans);
+}
+
+.dark .markmap text {
+  fill: white !important;
+}
+
+/* Fix markmap text styles */
+svg.markmap g.markmap-node > text {
+  font-family: var(--font-sans);
+  fill: black !important;
+}
+
+.dark svg.markmap g.markmap-node > text {
+  fill: white !important;
+}
+
+/* Ensure node text is properly visible */
+svg.markmap .markmap-node-text {
+  fill: black !important;
+  font-family: var(--font-sans);
+}
+
+.dark svg.markmap .markmap-node-text {
+  fill: white !important;
+}
+
 @theme {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
