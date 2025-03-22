@@ -2,7 +2,6 @@ import { Markmap } from 'markmap-view';
 import { RefObject } from 'react';
 import { transformer } from './markmap';
 import { toast } from 'sonner';
-import { toPng } from 'html-to-image';
 
 // Theme-related utilities
 export const applyThemeStyles = (
@@ -48,8 +47,15 @@ export const fitContent = (
   if (!svg) return;
   
   try {
-    const markmapDataObj = (svg as any).__data__;
-    if (markmapDataObj && typeof markmapDataObj.fit === 'function') {
+    // Define a type for the expected data structure
+    interface MarkmapData {
+      fit: () => void;
+    }
+    
+    const svgWithData = svg as SVGSVGElement & { __data__?: MarkmapData };
+    const markmapDataObj = svgWithData.__data__;
+    
+    if (markmapDataObj?.fit && typeof markmapDataObj.fit === 'function') {
       markmapDataObj.fit();
     }
   } catch (error) {
@@ -64,7 +70,6 @@ export const initializeMarkmap = (
   markmapRef: RefObject<Markmap | null>,
   containerRef: RefObject<HTMLDivElement | null>,
   theme: string | undefined,
-  setContentSize?: (size: { width: number; height: number }) => void
 ) => {
   if (!svgRef.current) return;
   
@@ -263,12 +268,22 @@ export const zoomIn = (
   if (!svg) return;
   
   try {
-    const markmapDataObj = (svg as any).__data__;
-    if (markmapDataObj && typeof markmapDataObj.zoom === 'function') {
-      // Get current transform and scale it
-      const { k } = markmapDataObj.zoom.transform;
+    // Define a type for the data structure
+    interface MarkmapData {
+      zoom?: {
+        transform: Record<string, any>;
+        scaleBy: (element: SVGSVGElement, factor: number) => void;
+      };
+      rescale?: (factor: number) => void;
+    }
+
+    const svgWithData = svg as SVGSVGElement & { __data__?: MarkmapData };
+    const markmapDataObj = svgWithData.__data__;
+    
+    if (markmapDataObj?.zoom && typeof markmapDataObj.zoom.scaleBy === 'function') {
+      // Scale without referencing k
       markmapDataObj.zoom.scaleBy(svg, factor);
-    } else if (markmapDataObj && typeof markmapDataObj.rescale === 'function') {
+    } else if (markmapDataObj?.rescale && typeof markmapDataObj.rescale === 'function') {
       markmapDataObj.rescale(factor);
     }
   } catch (error) {
@@ -283,12 +298,22 @@ export const zoomOut = (
   if (!svg) return;
   
   try {
-    const markmapDataObj = (svg as any).__data__;
-    if (markmapDataObj && typeof markmapDataObj.zoom === 'function') {
-      // Get current transform and scale it
-      const { k } = markmapDataObj.zoom.transform;
+    // Define a type for the data structure
+    interface MarkmapData {
+      zoom?: {
+        transform: Record<string, any>;
+        scaleBy: (element: SVGSVGElement, factor: number) => void;
+      };
+      rescale?: (factor: number) => void;
+    }
+
+    const svgWithData = svg as SVGSVGElement & { __data__?: MarkmapData };
+    const markmapDataObj = svgWithData.__data__;
+    
+    if (markmapDataObj?.zoom && typeof markmapDataObj.zoom.scaleBy === 'function') {
+      // Scale without referencing k
       markmapDataObj.zoom.scaleBy(svg, factor);
-    } else if (markmapDataObj && typeof markmapDataObj.rescale === 'function') {
+    } else if (markmapDataObj?.rescale && typeof markmapDataObj.rescale === 'function') {
       markmapDataObj.rescale(factor);
     }
   } catch (error) {
