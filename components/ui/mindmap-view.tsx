@@ -254,7 +254,7 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
     >
       <svg
         ref={ref}
-        className="w-full h-full markmap"
+        className="w-full h-full markmap dark:text-black"
       />
       
       {/* Mobile-friendly controls */}

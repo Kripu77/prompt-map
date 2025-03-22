@@ -8,7 +8,6 @@ import { LoaderCircle, Sparkles, CornerDownLeft, AlertCircle, Info } from 'lucid
 import { generateTitleFromPrompt, extractMindmapTitle } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { OnboardingGuide } from '@/components/ui/onboarding-guide';
 import { useThreads } from '@/hooks/use-threads';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
@@ -313,10 +312,6 @@ export default function MarkmapHooks() {
       
       {/* Subtle background pattern */}
       <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,rgba(120,120,120,0.1)_1px,transparent_1px)] bg-[length:24px_24px] pointer-events-none" />
-
-      {/* Onboarding Guide */}
-      <OnboardingGuide isFirstVisit={!isUserGenerated} />
-
       <motion.div 
         className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 w-full px-3 sm:px-0"
         initial={{ opacity: 0, y: -20 }}
