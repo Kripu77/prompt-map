@@ -271,7 +271,7 @@ export const zoomIn = (
     // Define a type for the data structure
     interface MarkmapData {
       zoom?: {
-        transform: Record<string, any>;
+        transform: Record<string, unknown>;
         scaleBy: (element: SVGSVGElement, factor: number) => void;
       };
       rescale?: (factor: number) => void;
@@ -301,7 +301,7 @@ export const zoomOut = (
     // Define a type for the data structure
     interface MarkmapData {
       zoom?: {
-        transform: Record<string, any>;
+        transform: Record<string, unknown>;
         scaleBy: (element: SVGSVGElement, factor: number) => void;
       };
       rescale?: (factor: number) => void;
