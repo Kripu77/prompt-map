@@ -264,24 +264,23 @@ export default function MarkmapHooks() {
           // This disables the bottom notification
         } else if (isAuthenticated) {
           // Let the user know their mindmap was saved
-          toast(
-            <div className="bg-background/80 border p-4 rounded-lg shadow-sm">
-              <div className="flex gap-3 items-center">
-                <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-sm font-medium">Mindmap saved!</h3>
-                  <p className="text-xs text-muted-foreground mt-1">Access it anytime from "Your Mindmaps"</p>
-                </div>
-              </div>
-            </div>,
-            { 
-              duration: 5000,
-              position: "top-center",
-              className: "custom-toast"
-            }
-          );
+          // toast(
+          //   <div className="bg-background/80 border p-4 rounded-lg shadow-sm">
+          //     <div className="flex gap-3 items-center">
+          //       <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+          //         <Sparkles className="h-5 w-5 text-primary" />
+          //       </div>
+          //       <div className="flex-1">
+          //         <h3 className="text-sm font-medium">Mindmap saved!</h3>
+          //         <p className="text-xs text-muted-foreground mt-1">Access it anytime from "Your Mindmaps"</p>
+          //       </div>
+          //     </div>
+          //   </div>,
+          //   { 
+          //     duration: 1000,
+          //     className: "custom-toast"
+          //   }
+          // );
         }
       }
     } catch (err) {
