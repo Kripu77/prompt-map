@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useThreads, Thread } from "@/hooks/use-threads";
+import { useThreads } from "@/hooks/use-threads";
+import { Thread } from "@/lib/api/mindmap";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";

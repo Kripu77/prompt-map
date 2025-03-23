@@ -33,7 +33,7 @@ if (typeof window !== 'undefined') {
 }
 
 export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const { mindmapData, setMindmapRef, prompt } = useMindmapStore();
   const { isOpen } = useSidebarStore();
   const [isMobile, setIsMobile] = useState(false);
@@ -74,7 +74,7 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
     ref as React.RefObject<SVGSVGElement | null>,
     containerRef,
     mindmapData,
-    theme,
+    resolvedTheme,
     setMindmapRef
   );
   
@@ -219,7 +219,7 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
  useEffect(() => {
   if (markmapInstance && ref && 'current' in ref && ref.current) {
     // Reapply all styling when theme changes
-    applyTextStyles(ref.current, theme);
+    applyTextStyles(ref.current, resolvedTheme);
     
     // Slightly delay adding node boxes to ensure theme is properly applied
     setTimeout(() => {
@@ -229,12 +229,12 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
           ref, 
           { current: markmapInstance as unknown as Markmap }, // Cast to expected type
           containerRef, 
-          theme
+          resolvedTheme
         );
       }
     }, 100);
   }
-}, [theme, markmapInstance, mindmapData, ref, containerRef]);
+}, [resolvedTheme, markmapInstance, mindmapData, ref, containerRef]);
 
   if (!mindmapData) {
     return null;
@@ -303,7 +303,7 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
           markmapInstance={markmapInstance as Markmap | null}
           toolbarPosition={toolbarPosition}
           isFullscreen={isFullscreen}
-          theme={theme}
+          theme={resolvedTheme}
           prompt={prompt}
           onZoom={handleZoom}
           onFullscreenToggle={handleFullscreenToggle}

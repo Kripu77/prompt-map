@@ -169,6 +169,7 @@ export function useThreads() {
     loadThread,
     updateThread,
     deleteThread,
-    isAuthenticated
+    isAuthenticated,
+    
   };
 }

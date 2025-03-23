@@ -212,7 +212,11 @@ export default function MarkmapHooks() {
       const data = await mindmapMutation.mutateAsync(payload);
       
       if (data.content) {
-        setMindmapData(data.content);
+        if (typeof data.content === 'string') {
+          setMindmapData(data.content);
+        } else {
+          setError('Invalid mindmap data received');
+        }
         // Mark as user-generated since this was created in response to user input
         setIsUserGenerated(true);
         // Enable follow-up mode for user-generated content
@@ -223,7 +227,7 @@ export default function MarkmapHooks() {
           recordAnonymousMindmap(
             value, 
             data.content, 
-            extractMindmapTitle(data.content) || value
+            extractMindmapTitle(data.content as string) || value
           );
         }
         
