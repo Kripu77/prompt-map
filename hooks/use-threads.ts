@@ -36,7 +36,7 @@ export function useThreads() {
     mutationFn: createThreadAPI,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['threads'] });
-      toast.success('Mindmap saved successfully');
+      toast.success("Mindmap saved successfully", { duration: 1000 });
     },
     onError: (error) => {
       console.error('Error creating thread:', error);

@@ -56,7 +56,6 @@ export function SaveThreadButton() {
       fetchThreads();
       setIsOpen(false);
       setTitle("");
-      toast.success("Mindmap saved successfully");
     } catch (error) {
       console.error("Error saving thread:", error);
       toast.error("Failed to save thread");

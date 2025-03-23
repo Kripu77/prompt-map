@@ -10,7 +10,7 @@ import { useDraggableToolbar } from '@/hooks/use-draggable-toolbar';
 import { MindmapToolbar } from './mindmap-toolbar';
 import {  fitContent } from '@/lib/mindmap-utils';
 import { cn } from '@/lib/utils';
-import { ZoomIn, ZoomOut, RefreshCw, Undo2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RefreshCw, Undo2, Maximize, Minimize } from 'lucide-react';
 import { Button } from './button';
 import * as d3 from 'd3';
 import { applyTextStyles } from '@/lib/theme-utils';
@@ -205,12 +205,87 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
   };
   
   const handleRefit = () => {
+    console.log("Refit button clicked"); // Debug log
+    
     const svgElement = ref as React.RefObject<SVGSVGElement>;
-    if (svgElement.current && markmapInstance) {
-      fitContent(svgElement.current);
+    if (!svgElement.current || !markmapInstance) {
+      console.log("Missing references for refit"); // Debug log
+      return;
+    }
+    
+    try {
+      // For mobile devices, use a more robust approach with transition
+      if (isMobile) {
+        console.log("Using mobile-specific refit"); // Debug log
+        
+        // Stop any ongoing animations
+        if (svgElement.current) {
+          const svg = d3.select(svgElement.current);
+          svg.interrupt();
+        }
+        
+        // First try the direct approach
+        try {
+          markmapInstance.fit();
+        } catch (err) {
+          console.error("Initial fit failed:", err);
+        }
+        
+        // Then use a delayed approach with d3 transitions for better mobile compatibility
+        setTimeout(() => {
+          try {
+            // Try to access the internal zoom behavior
+            const mm = markmapInstance;
+            
+            if (mm.svg && mm.zoom) {
+              // Get the fit transform
+              const targetTransform = mm.computeFitTransform?.() || mm.initialTransform;
+              
+              if (targetTransform) {
+                // Apply smooth transition
+                mm.svg
+                  .transition()
+                  .duration(500)
+                  .call(mm.zoom.transform, targetTransform);
+              } else {
+                // Fallback to standard fit
+                markmapInstance.fit();
+              }
+            } else {
+              // Another fallback approach - use fitContent directly
+              fitContent(svgElement.current);
+            }
+            
+            // Apply another fit after a delay to ensure it worked
+            setTimeout(() => {
+              try {
+                markmapInstance.fit();
+              } catch (e) {
+                console.error("Final fallback fit failed:", e);
+              }
+            }, 100);
+          } catch (error) {
+            console.error("Error in delayed refit:", error);
+            // Last resort fallback
+            fitContent(svgElement.current);
+          }
+        }, 50);
+      } else {
+        // Desktop approach - simpler and more direct
+        markmapInstance.fit();
+      }
+      
       // Reset scale and offset after fitting
       setScale(1);
       setPanOffset({ x: 0, y: 0 });
+    } catch (error) {
+      console.error("Error in handleRefit:", error);
+      // Try one more time with the most basic approach
+      try {
+        markmapInstance.fit();
+      } catch (e) {
+        console.error("Final fallback fit failed:", e);
+      }
     }
   };
 
@@ -289,9 +364,35 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
             variant="secondary"
             className="h-10 w-10 rounded-full shadow-lg bg-background/90 backdrop-blur-sm"
             onClick={handleRefit}
+            onTouchEnd={(e) => {
+              e.preventDefault(); // Prevent double events
+              e.stopPropagation(); // Stop event bubbling
+              handleRefit();
+            }}
           >
             <RefreshCw className="h-5 w-5" />
           </Button>
+          
+          {/* New fullscreen toggle button */}
+          <Button
+            size="icon"
+            variant="secondary"
+            className="h-10 w-10 rounded-full shadow-lg bg-background/90 backdrop-blur-sm"
+            onClick={handleFullscreenToggle}
+            onTouchEnd={(e) => {
+              e.preventDefault(); // Prevent double events
+              e.stopPropagation(); // Stop event bubbling
+              handleFullscreenToggle();
+            }}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? (
+              <Minimize className="h-5 w-5" />
+            ) : (
+              <Maximize className="h-5 w-5" />
+            )}
+          </Button>
+          
         </div>
       )}
       
