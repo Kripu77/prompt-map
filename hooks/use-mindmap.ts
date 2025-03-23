@@ -7,6 +7,7 @@ import { addNodeBoxes } from '@/lib/mindmap-node-boxes';
 import { debounce } from 'lodash';
 import { ZoomBehavior } from 'd3';
 import { INode } from 'markmap-common';
+import * as d3 from 'd3';
 
 // Create a transformer instance once, not on each render
 const transformer = new Transformer();
@@ -32,6 +33,8 @@ interface MarkmapWithMethods {
 export function asMarkmapWithMethods(markmap: Markmap): MarkmapWithMethods {
   return markmap as unknown as MarkmapWithMethods;
 }
+
+
 
 /**
  * Hook to initialize the markmap
@@ -107,6 +110,7 @@ export const useMarkmapData = (
           
           // Apply styles once more after animation completes
           const styleTimer = setTimeout(applyStyles, 500);
+          
           return () => clearTimeout(styleTimer);
         }, 100);
         
@@ -115,7 +119,7 @@ export const useMarkmapData = (
         console.error('Error updating mindmap data:', error);
       }
     }
-  }, [markmapInstance, rootData, applyStyles]);
+  }, [markmapInstance, rootData, applyStyles, svgRef]);
 
   // Apply text styles when theme changes
   useEffect(() => {
@@ -165,6 +169,12 @@ export const useMarkmapFullscreen = (
       setTimeout(() => {
         if (svgRef.current) {
           applyTextStyles(svgRef.current, theme);
+          
+          // Check if mobile and apply special scaling
+          const isMobile = window.innerWidth < 768;
+          if (isMobile) {
+            applyMobileScaling(svgRef.current, markmapInstance);
+          }
         }
       }, 450);
     } catch (error) {
@@ -238,13 +248,12 @@ export const useMarkmapFullscreen = (
 
 /**
  * Hook to handle zoom controls
- */
-export const useMarkmapZoom = (
+ */export const useMarkmapZoom = (
   markmapInstance: MarkmapWithMethods | null,
   svgRef: RefObject<SVGSVGElement | null>,
   theme?: string
 ) => {
-  // Improved zoom with more robust approach and better typing
+  // Improved zoom with better scale synchronization
   const handleZoom = useCallback((scale: number) => {
     if (!markmapInstance || !svgRef.current) return;
     
@@ -285,15 +294,95 @@ export const useMarkmapZoom = (
   return { handleZoom };
 };
 
-/**
- * Main hook that composes all the specialized hooks
- */
+// Update the applyMobileScaling function to better handle scale tracking:
+
+export const applyMobileScaling = (
+  svgElement: SVGSVGElement | null,
+  markmapInstance: MarkmapWithMethods | null,
+  scale: number = 0.75,
+  onScaleApplied?: (scale: number, offset: {x: number, y: number}) => void
+) => {
+  if (!svgElement || !markmapInstance) return;
+  
+  try {
+    // First try to fit the content
+    markmapInstance.fit();
+    
+    // Then apply a mobile-friendly scale
+    setTimeout(() => {
+      const svg = d3.select(svgElement);
+      const g = svg.select('g');
+      
+      // Get current transform after fit
+      const transform = g.attr('transform') || '';
+      const match = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(transform);
+      
+      if (match) {
+        const x = parseFloat(match[1]);
+        const y = parseFloat(match[2]);
+        
+        // Apply new transform with our scale but keep the translation from fit
+        g.transition()
+          .duration(300)
+          .attr('transform', `translate(${x},${y}) scale(${scale})`);
+          
+        // Call callback with applied scale and offset
+        if (onScaleApplied) {
+          onScaleApplied(scale, {x, y});
+        }
+      } else {
+        // Fallback if we couldn't parse the transform
+        g.transition()
+          .duration(300)
+          .attr('transform', `scale(${scale})`);
+          
+        // Call callback with default offset if no match
+        if (onScaleApplied) {
+          onScaleApplied(scale, {x: 0, y: 0});
+        }
+      }
+    }, 300);
+  } catch (error) {
+    console.error('Error applying mobile scaling:', error);
+  }
+};
+
+// Update the useMobileMindmap hook to properly set scale state 
+
+export const useMobileMindmap = (
+  markmapInstance: MarkmapWithMethods | null,
+  svgRef: RefObject<SVGSVGElement | null>,
+  mindmapData: string | null,
+  onScaleChange?: (scale: number, offset: {x: number, y: number}) => void
+) => {
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768;
+    
+    if (isMobile && markmapInstance && svgRef.current && mindmapData) {
+      // Wait for markmap to be fully initialized and data to be loaded
+      const timer = setTimeout(() => {
+        applyMobileScaling(
+          svgRef.current, 
+          markmapInstance,
+          0.75,
+          onScaleChange
+        );
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [markmapInstance, svgRef, mindmapData, onScaleChange]);
+};
+
+// Finally, update the main useMindmap hook to pass scale state updates up:
+
 export const useMindmap = (
   svgRef: RefObject<SVGSVGElement | null>,
   containerRef: RefObject<HTMLDivElement | null>,
   mindmapData: string | null,
   theme: string | undefined,
-  setMindmapRef: (ref: SVGSVGElement) => void
+  setMindmapRef: (ref: SVGSVGElement) => void,
+  onScaleChange?: (scale: number, offset: {x: number, y: number}) => void
 ) => {
   // Initialize markmap
   const markmapInstance = useMarkmapInit(svgRef, setMindmapRef);
@@ -307,6 +396,9 @@ export const useMindmap = (
   
   // Handle zoom
   const { handleZoom } = useMarkmapZoom(markmapInstance, svgRef, theme);
+    
+  // Mobile-specific initialization with scale tracking
+  useMobileMindmap(markmapInstance, svgRef, mindmapData, onScaleChange);
 
   return {
     markmapInstance,
