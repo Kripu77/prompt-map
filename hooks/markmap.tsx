@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useAnonymousAnalytics } from '@/hooks/use-anonymous-analytics';
+import { useCheckTopicShift, useGenerateMindmap } from '@/lib/api/mindmap';
 
 // Interface for prompt history
 interface PromptHistoryItem {
@@ -42,6 +43,10 @@ export default function MarkmapHooks() {
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [pendingFollowUp, setPendingFollowUp] = useState<boolean>(false);
+
+  // Use Tanstack Query mutations
+  const topicShiftMutation = useCheckTopicShift();
+  const mindmapMutation = useGenerateMindmap();
 
   // Get the title to display - use the improved title generation function that extracts title from mindmap content
   const mapTitle = mindmapData 
@@ -189,47 +194,29 @@ export default function MarkmapHooks() {
       if (isFollowUp && isUserGenerated) {
         const shiftCheckPayload = generatePromptPayload(value, true, true);
         
-        const shiftCheckResponse = await fetch('/api/check-topic-shift', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(shiftCheckPayload),
-        });
+        const result = await topicShiftMutation.mutateAsync(shiftCheckPayload);
         
-        if (shiftCheckResponse.ok) {
-          const shiftCheckData = await shiftCheckResponse.json();
-          
-          if (shiftCheckData.isTopicShift) {
-            // Store the prompt for later use
-            setPendingPrompt(value);
-            setPendingFollowUp(isFollowUp);
-            setTopicShiftDetected(true);
-            setIsLoading(false);
-            return;
-          }
+        if (result.isTopicShift) {
+          // Store the prompt for later use
+          setPendingPrompt(value);
+          setPendingFollowUp(isFollowUp);
+          setTopicShiftDetected(true);
+          setIsLoading(false);
+          return;
         }
       }
       
       // No topic shift detected, proceed with normal processing
       const payload = generatePromptPayload(value, isFollowUp);
       
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate mind map');
-      }
-      
-      const data = await response.json();
+      const data = await mindmapMutation.mutateAsync(payload);
       
       if (data.content) {
-        setMindmapData(data.content);
+        if (typeof data.content === 'string') {
+          setMindmapData(data.content);
+        } else {
+          setError('Invalid mindmap data received');
+        }
         // Mark as user-generated since this was created in response to user input
         setIsUserGenerated(true);
         // Enable follow-up mode for user-generated content
@@ -240,7 +227,7 @@ export default function MarkmapHooks() {
           recordAnonymousMindmap(
             value, 
             data.content, 
-            extractMindmapTitle(data.content) || value
+            extractMindmapTitle(data.content as string) || value
           );
         }
         
@@ -277,24 +264,23 @@ export default function MarkmapHooks() {
           // This disables the bottom notification
         } else if (isAuthenticated) {
           // Let the user know their mindmap was saved
-          toast(
-            <div className="bg-background/80 border p-4 rounded-lg shadow-sm">
-              <div className="flex gap-3 items-center">
-                <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-sm font-medium">Mindmap saved!</h3>
-                  <p className="text-xs text-muted-foreground mt-1">Access it anytime from "Your Mindmaps"</p>
-                </div>
-              </div>
-            </div>,
-            { 
-              duration: 5000,
-              position: "top-center",
-              className: "custom-toast"
-            }
-          );
+          // toast(
+          //   <div className="bg-background/80 border p-4 rounded-lg shadow-sm">
+          //     <div className="flex gap-3 items-center">
+          //       <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+          //         <Sparkles className="h-5 w-5 text-primary" />
+          //       </div>
+          //       <div className="flex-1">
+          //         <h3 className="text-sm font-medium">Mindmap saved!</h3>
+          //         <p className="text-xs text-muted-foreground mt-1">Access it anytime from "Your Mindmaps"</p>
+          //       </div>
+          //     </div>
+          //   </div>,
+          //   { 
+          //     duration: 1000,
+          //     className: "custom-toast"
+          //   }
+          // );
         }
       }
     } catch (err) {

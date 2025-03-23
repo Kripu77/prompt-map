@@ -11,6 +11,7 @@ import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css";
 import "@/lib/markmap-defaults";
+import { QueryProvider } from "@/lib/providers/query-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -124,6 +125,7 @@ export default function RootLayout({
           disableTransitionOnChange
         ><Analytics/> 
         <SpeedInsights/>
+        <QueryProvider>
           <SessionProvider>
             <AuthSidebarProvider>
               <div className="flex min-h-screen flex-col">
@@ -138,6 +140,7 @@ export default function RootLayout({
             </AuthSidebarProvider>
             <Toaster />
           </SessionProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
