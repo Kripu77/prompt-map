@@ -10,7 +10,7 @@ import { useDraggableToolbar } from '@/hooks/use-draggable-toolbar';
 import { MindmapToolbar } from './mindmap-toolbar';
 import {  fitContent } from '@/lib/mindmap-utils';
 import { cn } from '@/lib/utils';
-import { ZoomIn, ZoomOut, RefreshCw, Undo2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RefreshCw, Undo2, Maximize, Minimize } from 'lucide-react';
 import { Button } from './button';
 import * as d3 from 'd3';
 import { applyTextStyles } from '@/lib/theme-utils';
@@ -235,7 +235,7 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
         setTimeout(() => {
           try {
             // Try to access the internal zoom behavior
-            const mm = markmapInstance as any;
+            const mm = markmapInstance;
             
             if (mm.svg && mm.zoom) {
               // Get the fit transform
@@ -372,6 +372,27 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
           >
             <RefreshCw className="h-5 w-5" />
           </Button>
+          
+          {/* New fullscreen toggle button */}
+          <Button
+            size="icon"
+            variant="secondary"
+            className="h-10 w-10 rounded-full shadow-lg bg-background/90 backdrop-blur-sm"
+            onClick={handleFullscreenToggle}
+            onTouchEnd={(e) => {
+              e.preventDefault(); // Prevent double events
+              e.stopPropagation(); // Stop event bubbling
+              handleFullscreenToggle();
+            }}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? (
+              <Minimize className="h-5 w-5" />
+            ) : (
+              <Maximize className="h-5 w-5" />
+            )}
+          </Button>
+          
         </div>
       )}
       
