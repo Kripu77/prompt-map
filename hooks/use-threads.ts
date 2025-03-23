@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { 
@@ -85,8 +85,13 @@ export function useThreads() {
   // Wrapper functions to maintain the same API
 
   // Create thread with auth check
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
+
   const createThread = useCallback(async (title: string, content: string) => {
-    if (!isAuthenticated) {
+    if (!isAuthenticatedRef.current) {
       toast.error('You must be signed in to save a thread');
       return null;
     }
@@ -97,7 +102,7 @@ export function useThreads() {
     } catch (err) {
       return null;
     }
-  }, [isAuthenticated, createThreadMutation]);
+  }, [isAuthenticated]);
 
   // Load specific thread
   const loadThread = useCallback(async (id: string) => {

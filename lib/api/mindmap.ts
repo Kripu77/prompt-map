@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 // Types
 interface PromptPayload {
@@ -136,6 +136,19 @@ export async function createThreadAPI({ title, content }: { title: string, conte
   }
   
   return response.json();
+}
+
+// Hook to create thread with proper cache management
+export function useCreateThread() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: createThreadAPI,
+    onSuccess: () => {
+      // Invalidate the threads query to trigger a controlled refetch
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+    }
+  });
 }
 
 export async function updateThreadAPI({ id, updates }: { id: string, updates: ThreadUpdateData }): Promise<{ thread: Thread }> {
