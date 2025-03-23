@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, forwardRef, useEffect, useState } from 'react';
+import React, { useRef, forwardRef, useEffect, useState, useCallback } from 'react';
 import { useMindmapStore, useSidebarStore } from '@/lib/store';
 import { useTheme } from 'next-themes';
 import '@/lib/markmap-defaults';
@@ -8,7 +8,6 @@ import { setupFullscreenStyles } from '@/lib/theme-utils';
 import { useMindmap } from '@/hooks/use-mindmap';
 import { useDraggableToolbar } from '@/hooks/use-draggable-toolbar';
 import { MindmapToolbar } from './mindmap-toolbar';
-import {  fitContent } from '@/lib/mindmap-utils';
 import { cn } from '@/lib/utils';
 import { ZoomIn, ZoomOut, RefreshCw, Undo2, Maximize, Minimize } from 'lucide-react';
 import { Button } from './button';
@@ -32,6 +31,7 @@ if (typeof window !== 'undefined') {
   });
 }
 
+
 export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
   const { resolvedTheme } = useTheme();
   const { mindmapData, setMindmapRef, prompt } = useMindmapStore();
@@ -39,10 +39,10 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
   const [isMobile, setIsMobile] = useState(false);
   const [scale, setScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  // Explicitly define types for refs to fix the TypeScript issue
   const containerRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const hammerRef = useRef<HammerManager | null>(null);
+  const lastPinchScaleRef = useRef(1); // To track the last pinch scale
   const [toolbarOffscreen, setToolbarOffscreen] = useState(false);
   
   // Setup fullscreen styles
@@ -53,7 +53,13 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
   // Detect mobile devices
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const isMobileDevice = window.innerWidth < 768;
+      setIsMobile(isMobileDevice);
+      
+      // Set initial scale for mobile when component first loads
+      if (isMobileDevice && scale === 1) {
+        setScale(0.75);
+      }
     };
     
     // Check on mount
@@ -62,14 +68,14 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
     // Listen for resize events
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  }, [scale]);
   
   // Initialize the mindmap with hooks
   const { 
     markmapInstance, 
     isFullscreen, 
-    handleZoom, 
-    handleFullscreenToggle 
+    handleZoom: baseHandleZoom, 
+    handleFullscreenToggle,
   } = useMindmap(
     ref as React.RefObject<SVGSVGElement | null>,
     containerRef,
@@ -77,6 +83,16 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
     resolvedTheme,
     setMindmapRef
   );
+  
+  // Create a custom zoom handler that updates our scale state
+  const handleZoom = useCallback((scaleFactor: number) => {
+    setScale(prevScale => {
+      const newScale = Math.max(0.5, Math.min(3, prevScale * scaleFactor));
+      // Call the base zoom handler with the same factor
+      baseHandleZoom(scaleFactor);
+      return newScale;
+    });
+  }, [baseHandleZoom]);
   
   // Setup draggable toolbar
   const { 
@@ -89,52 +105,71 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
     containerRef
   );
 
-  // Setup touch gestures for mobile
+  // Better handling of scale updates for pinch gestures
+  const handlePinchUpdate = useCallback((e: { scale: number }) => {
+    if (!markmapInstance || !ref || !('current' in ref) || !ref.current) return;
+    
+    // Calculate scale change relative to the last pinch event
+    const scaleFactor = e.scale / lastPinchScaleRef.current;
+    lastPinchScaleRef.current = e.scale;
+    
+    if (Math.abs(scaleFactor - 1) > 0.01) { // Only update if change is significant
+      setScale(prevScale => {
+        const newScale = Math.max(0.5, Math.min(3, prevScale * scaleFactor));
+        
+        // Apply zoom to the markmap through d3
+        const svg = d3.select(ref.current as SVGSVGElement);
+        const g = svg.select('g');
+        
+        // Extract current transform
+        const transform = g.attr('transform') || '';
+        const translateMatch = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(transform);
+
+        
+        const currentX = translateMatch ? parseFloat(translateMatch[1]) : 0;
+        const currentY = translateMatch ? parseFloat(translateMatch[2]) : 0;
+        
+        // Apply updated transform
+        g.attr('transform', `translate(${currentX},${currentY}) scale(${newScale})`);
+        
+        return newScale;
+      });
+    }
+  }, [markmapInstance, ref]);
+
+  // Setup touch gestures for mobile with improved scale tracking
   useEffect(() => {
-    if (isMobile && containerRef.current && ref && Hammer) {
+    if (isMobile && containerRef.current && ref && 'current' in ref && Hammer) {
       // Setup hammer.js for touch gestures
       const hammer = new Hammer(containerRef.current);
       
-      // Enable pinch recognition
+      // Enable pinch and pan
       hammer.get('pinch').set({ enable: true });
       hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
       
-      // Handle pinch to zoom
-      hammer.on('pinch', (e: { scale: number }) => {
-        if (markmapInstance) {
-          // Calculate new scale from pinch gesture
-          const newScale = Math.max(0.5, Math.min(3, scale * e.scale));
-          setScale(newScale);
-          
-          // Apply zoom to the markmap
-          const svgElement = ref as React.RefObject<SVGSVGElement>;
-          if (svgElement.current) {
-            const svg = d3.select(svgElement.current);
-            const g = svg.select('g');
-            
-            g.attr('transform', `translate(${panOffset.x},${panOffset.y}) scale(${newScale})`);
-          }
-        }
+      // Reset the pinch scale reference when starting a new pinch
+      hammer.on('pinchstart', () => {
+        lastPinchScaleRef.current = 1;
       });
       
-      // Handle pan/drag to move
+      // Handle pinch to zoom with improved scale tracking
+      hammer.on('pinch', handlePinchUpdate);
+      
+      // Handle pan/drag with improved state tracking
       hammer.on('pan', (e: { deltaX: number; deltaY: number }) => {
-        if (markmapInstance) {
-          // Update pan offset based on gesture
-          setPanOffset({
-            x: panOffset.x + e.deltaX / scale,
-            y: panOffset.y + e.deltaY / scale
-          });
-          
-          // Apply pan to the markmap
-          const svgElement = ref as React.RefObject<SVGSVGElement>;
-          if (svgElement.current) {
-            const svg = d3.select(svgElement.current);
-            const g = svg.select('g');
-            
-            g.attr('transform', `translate(${panOffset.x},${panOffset.y}) scale(${scale})`);
-          }
-        }
+        if (!markmapInstance || !ref || !('current' in ref) || !ref.current) return;
+        
+        const newPanOffset = {
+          x: panOffset.x + e.deltaX / scale,
+          y: panOffset.y + e.deltaY / scale
+        };
+        
+        setPanOffset(newPanOffset);
+        
+        // Apply pan through d3
+        const svg = d3.select(ref.current as SVGSVGElement);
+        const g = svg.select('g');
+        g.attr('transform', `translate(${newPanOffset.x},${newPanOffset.y}) scale(${scale})`);
       });
       
       hammerRef.current = hammer;
@@ -143,25 +178,66 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
         hammer.destroy();
       };
     }
-  }, [isMobile, markmapInstance, ref, scale, panOffset]);
+  }, [isMobile, markmapInstance, ref, scale, panOffset, handlePinchUpdate]);
 
-  // Auto-fit the content on mobile when mindmap loads
+  // Improved auto-fit for mobile that properly sets the scale state
   useEffect(() => {
-    if (isMobile && markmapInstance && ref) {
-      const svgElement = ref as React.RefObject<SVGSVGElement>;
-      if (svgElement.current) {
-        // Small delay to ensure mindmap is rendered
-        setTimeout(() => {
-          fitContent(svgElement.current);
-          // Reset scale and offset after fitting
-          setScale(1);
-          setPanOffset({ x: 0, y: 0 });
-        }, 500);
-      }
+    if (isMobile && markmapInstance && ref && mindmapData) {
+      // When mindmap data changes, wait for rendering to complete
+      const timer = setTimeout(() => {
+        const svgElement = ref as React.RefObject<SVGSVGElement>;
+        if (!svgElement.current) return;
+        
+        try {
+          // First run the built-in fit method
+          markmapInstance.fit();
+          
+          // Apply mobile-friendly scale with a short delay
+          setTimeout(() => {
+            // Set mobile scale
+            const mobileScale = 0.75;
+            setScale(mobileScale); // Update state to match visual scale
+            
+            // Apply the scale transformation
+            const svg = d3.select(svgElement.current);
+            const g = svg.select('g');
+            
+            // Get current transform values after fitting
+            const transform = g.attr('transform') || '';
+            const match = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(transform);
+            
+            if (match) {
+              const x = parseFloat(match[1]);
+              const y = parseFloat(match[2]);
+              
+              // Apply new transform with scale
+              g.transition()
+                .duration(300)
+                .attr('transform', `translate(${x},${y}) scale(${mobileScale})`);
+              
+              // Update pan offset to match the current position
+              setPanOffset({ x, y });
+            }
+          }, 300);
+        } catch (error) {
+          console.error("Mobile initialization error:", error);
+          
+          // Use fallback approach
+          try {
+            markmapInstance.fit();
+            setScale(0.75);
+            setPanOffset({ x: 0, y: 0 });
+          } catch (e) {
+            console.error("Fallback fit failed:", e);
+          }
+        }
+      }, 800); 
+      
+      return () => clearTimeout(timer);
     }
   }, [isMobile, markmapInstance, mindmapData, ref]);
   
-  // Check if toolbar is mostly offscreen and show recovery button
+  // Check if toolbar is mostly offscreen
   useEffect(() => {
     if (!isMobile && toolbarRef.current && containerRef.current) {
       const checkToolbarPosition = () => {
@@ -191,125 +267,103 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
     }
   }, [isMobile]);
   
-  // Handlers for mindmap controls
-  const handleZoomIn = () => {
-    const newScale = Math.min(3, scale * 1.25);
-    setScale(newScale);
-    handleZoom(1.25);
-  };
+  // Handlers for mindmap controls with improved scale tracking
+  const handleZoomIn = useCallback(() => {
+    const scaleFactor = 1.25;
+    setScale(prevScale => {
+      const newScale = Math.min(3, prevScale * scaleFactor);
+      handleZoom(scaleFactor);
+      return newScale;
+    });
+  }, [handleZoom]);
   
-  const handleZoomOut = () => {
-    const newScale = Math.max(0.5, scale * 0.8);
-    setScale(newScale);
-    handleZoom(0.8);
-  };
+  const handleZoomOut = useCallback(() => {
+    const scaleFactor = 0.8;
+    setScale(prevScale => {
+      const newScale = Math.max(0.5, prevScale * scaleFactor);
+      handleZoom(scaleFactor);
+      return newScale;
+    });
+  }, [handleZoom]);
   
-  const handleRefit = () => {
-    console.log("Refit button clicked"); // Debug log
-    
-    const svgElement = ref as React.RefObject<SVGSVGElement>;
-    if (!svgElement.current || !markmapInstance) {
-      console.log("Missing references for refit"); // Debug log
+  // Improved refit function that properly updates scale state
+  const handleRefit = useCallback(() => {
+    if (!ref || !('current' in ref) || !ref.current || !markmapInstance) {
       return;
     }
     
     try {
-      // For mobile devices, use a more robust approach with transition
       if (isMobile) {
-        console.log("Using mobile-specific refit"); // Debug log
-        
-        // Stop any ongoing animations
-        if (svgElement.current) {
-          const svg = d3.select(svgElement.current);
-          svg.interrupt();
-        }
-        
-        // First try the direct approach
-        try {
-          markmapInstance.fit();
-        } catch (err) {
-          console.error("Initial fit failed:", err);
-        }
-        
-        // Then use a delayed approach with d3 transitions for better mobile compatibility
-        setTimeout(() => {
-          try {
-            // Try to access the internal zoom behavior
-            const mm = markmapInstance;
-            
-            if (mm.svg && mm.zoom) {
-              // Get the fit transform
-              const targetTransform = mm.computeFitTransform?.() || mm.initialTransform;
-              
-              if (targetTransform) {
-                // Apply smooth transition
-                mm.svg
-                  .transition()
-                  .duration(500)
-                  .call(mm.zoom.transform, targetTransform);
-              } else {
-                // Fallback to standard fit
-                markmapInstance.fit();
-              }
-            } else {
-              // Another fallback approach - use fitContent directly
-              fitContent(svgElement.current);
-            }
-            
-            // Apply another fit after a delay to ensure it worked
-            setTimeout(() => {
-              try {
-                markmapInstance.fit();
-              } catch (e) {
-                console.error("Final fallback fit failed:", e);
-              }
-            }, 100);
-          } catch (error) {
-            console.error("Error in delayed refit:", error);
-            // Last resort fallback
-            fitContent(svgElement.current);
-          }
-        }, 50);
-      } else {
-        // Desktop approach - simpler and more direct
+        // For mobile, use a sequence of operations
         markmapInstance.fit();
+        
+        // Apply mobile scale
+        setTimeout(() => {
+          const mobileScale = 0.75;
+          setScale(mobileScale);
+          
+          const svg = d3.select(ref.current as SVGSVGElement);
+          const g = svg.select('g');
+          
+          // Get current transform after fit
+          const transform = g.attr('transform') || '';
+          const match = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(transform);
+          
+          if (match) {
+            const x = parseFloat(match[1]);
+            const y = parseFloat(match[2]);
+            
+            // Apply with transition
+            g.transition()
+              .duration(300)
+              .attr('transform', `translate(${x},${y}) scale(${mobileScale})`);
+            
+            // Reset pan offset to the new position
+            setPanOffset({ x, y });
+          }
+        }, 300);
+      } else {
+        // Desktop approach
+        markmapInstance.fit();
+        setScale(1);
+        setPanOffset({ x: 0, y: 0 });
       }
       
-      // Reset scale and offset after fitting
-      setScale(1);
-      setPanOffset({ x: 0, y: 0 });
+      // Reset pinch tracking
+      lastPinchScaleRef.current = 1;
     } catch (error) {
       console.error("Error in handleRefit:", error);
-      // Try one more time with the most basic approach
+      // Fallback
       try {
         markmapInstance.fit();
+        setScale(isMobile ? 0.75 : 1);
+        setPanOffset({ x: 0, y: 0 });
       } catch (e) {
         console.error("Final fallback fit failed:", e);
       }
     }
-  };
+  }, [isMobile, markmapInstance, ref]);
 
-  // Add this effect to reapply styles when theme changes
- // Add this effect to reapply styles when theme changes
- useEffect(() => {
-  if (markmapInstance && ref && 'current' in ref && ref.current) {
-    // Reapply all styling when theme changes
-    applyTextStyles(ref.current, resolvedTheme);
-    
-    // Slightly delay adding node boxes to ensure theme is properly applied
-    setTimeout(() => {
-      if (ref && 'current' in ref && ref.current) {
-        initializeMarkmap(
-          mindmapData || '', 
-          ref, 
-          { current: markmapInstance as unknown as Markmap }, // Cast to expected type
-          containerRef, 
-          resolvedTheme
-        );
-      }
-    }, 100);
-  }
-}, [resolvedTheme, markmapInstance, mindmapData, ref, containerRef]);
+  // Reapply styles when theme changes
+  useEffect(() => {
+    if (markmapInstance && ref && 'current' in ref && ref.current) {
+      // Reapply styling when theme changes
+      applyTextStyles(ref.current, resolvedTheme);
+      
+      // Delay adding node boxes
+      setTimeout(() => {
+        if (ref && 'current' in ref && ref.current) {
+          initializeMarkmap(
+            mindmapData || '', 
+            ref, 
+            { current: markmapInstance as unknown as Markmap },
+            containerRef, 
+            resolvedTheme
+          );
+        }
+      }, 100);
+    }
+  }, [resolvedTheme, markmapInstance, mindmapData, ref, containerRef]);
 
   if (!mindmapData) {
     return null;
@@ -320,29 +374,23 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
       className={cn(
         "relative w-full h-full flex items-center justify-center",
         isFullscreen ? "fullscreen-mindmap" : "",
-        // Only apply scaling on desktop when sidebar is open
         !isMobile && isOpen && "md:scale-[0.85] md:transform-gpu transition-transform duration-300 ease-in-out",
-        // Make container touchable on mobile
         isMobile && "touch-manipulation",
-        // Add overflow visible to allow toolbar to move outside
         "overflow-visible isolate"
       )}
-      style={{ 
-        transformOrigin: "center center",
-        position: "relative", // Ensure proper positioning context
-        zIndex: 10, // Create stacking context
-        padding: "30px", // Add padding to make it easier to grab toolbar when positioned outside
-      }}
       ref={containerRef}
     >
       <svg
         ref={ref}
-        className="w-full h-full markmap dark:text-black"
+        className={cn(
+          "w-full h-full markmap dark:text-black",
+          isMobile && "mobile-markmap"
+        )}
       />
       
       {/* Mobile-friendly controls */}
       {isMobile && (
-        <div className="absolute bottom-20 right-4 flex flex-col gap-2 z-20 mindmap-controls">
+        <div className="absolute bottom-0 right-4 flex flex-col gap-2 z-20 mindmap-controls">
           <Button
             size="icon"
             variant="secondary"
@@ -365,23 +413,22 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
             className="h-10 w-10 rounded-full shadow-lg bg-background/90 backdrop-blur-sm"
             onClick={handleRefit}
             onTouchEnd={(e) => {
-              e.preventDefault(); // Prevent double events
-              e.stopPropagation(); // Stop event bubbling
+              e.preventDefault();
+              e.stopPropagation();
               handleRefit();
             }}
           >
             <RefreshCw className="h-5 w-5" />
           </Button>
           
-          {/* New fullscreen toggle button */}
           <Button
             size="icon"
             variant="secondary"
             className="h-10 w-10 rounded-full shadow-lg bg-background/90 backdrop-blur-sm"
             onClick={handleFullscreenToggle}
             onTouchEnd={(e) => {
-              e.preventDefault(); // Prevent double events
-              e.stopPropagation(); // Stop event bubbling
+              e.preventDefault();
+              e.stopPropagation();
               handleFullscreenToggle();
             }}
             aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
@@ -392,7 +439,6 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
               <Maximize className="h-5 w-5" />
             )}
           </Button>
-          
         </div>
       )}
       
