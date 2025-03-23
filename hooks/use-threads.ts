@@ -1,206 +1,167 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
-
-export type Thread = {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  content: string;
-  userId: string;
-};
+import { 
+  useQuery, 
+  useMutation, 
+  useQueryClient
+} from '@tanstack/react-query';
+import {
+  Thread,
+  ThreadUpdateData,
+  fetchThreadsAPI,
+  getThreadAPI,
+  createThreadAPI,
+  updateThreadAPI,
+  deleteThreadAPI
+} from '@/lib/api/mindmap';
 
 export function useThreads() {
   const { data: session, status } = useSession();
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
-
-  const fetchThreads = useCallback(async () => {
-    if (status !== 'authenticated' || !session?.user) {
-      return;
+  const queryClient = useQueryClient();
+  const isAuthenticated = status === 'authenticated';
+  
+  // Query for fetching all threads
+  const threadsQuery = useQuery({
+    queryKey: ['threads'],
+    queryFn: fetchThreadsAPI,
+    enabled: isAuthenticated,
+    select: (data) => data.threads,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+  
+  // Mutation for creating a new thread
+  const createThreadMutation = useMutation({
+    mutationFn: createThreadAPI,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+      toast.success('Mindmap saved successfully');
+    },
+    onError: (error) => {
+      console.error('Error creating thread:', error);
+      toast.error('Failed to save thread');
     }
-
-    try {
-      setIsLoading(true);
-      setError(null);
+  });
+  
+  // Mutation for updating a thread
+  const updateThreadMutation = useMutation({
+    mutationFn: updateThreadAPI,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
       
-      const response = await fetch('/api/threads');
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch threads');
+      // Update the selected thread if it's the one being edited
+      if (selectedThread?.id === data.thread.id) {
+        setSelectedThread(data.thread);
       }
       
-      const data = await response.json();
-      setThreads(data.threads);
-    } catch (err) {
-      console.error('Error fetching threads:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      toast.error('Failed to load threads');
-    } finally {
-      setIsLoading(false);
+      toast.success('Thread updated successfully');
+    },
+    onError: (error) => {
+      console.error('Error updating thread:', error);
+      toast.error('Failed to update thread');
     }
-  }, [session, status]);
+  });
+  
+  // Mutation for deleting a thread
+  const deleteThreadMutation = useMutation({
+    mutationFn: deleteThreadAPI,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+      
+      // Clear selected thread if it's the one being deleted
+      if (selectedThread?.id === variables) {
+        setSelectedThread(null);
+      }
+      
+      toast.success('Thread deleted successfully');
+    },
+    onError: (error) => {
+      console.error('Error deleting thread:', error);
+      toast.error('Failed to delete thread');
+    }
+  });
+  
+  // Wrapper functions to maintain the same API
 
+  // Create thread with auth check
   const createThread = useCallback(async (title: string, content: string) => {
-    if (status !== 'authenticated' || !session?.user) {
+    if (!isAuthenticated) {
       toast.error('You must be signed in to save a thread');
       return null;
     }
 
     try {
-      setIsLoading(true);
-      
-      const response = await fetch('/api/threads', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ title, content }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create thread');
-      }
-      
-      const data = await response.json();
-      
-      // Update the threads list with the new thread
-      setThreads((prev) => [data.thread, ...prev]);
-      toast.success('Mindmap saved successfully');
-      
-      return data.thread;
+      const result = await createThreadMutation.mutateAsync({ title, content });
+      return result.thread;
     } catch (err) {
-      console.error('Error creating thread:', err);
-      toast.error('Failed to save thread');
       return null;
-    } finally {
-      setIsLoading(false);
     }
-  }, [session, status]);
+  }, [isAuthenticated, createThreadMutation]);
 
+  // Load specific thread
   const loadThread = useCallback(async (id: string) => {
-    if (status !== 'authenticated' || !session?.user) {
+    if (!isAuthenticated) {
       return null;
     }
 
     try {
-      setIsLoading(true);
+      const result = await queryClient.fetchQuery({
+        queryKey: ['thread', id],
+        queryFn: () => getThreadAPI(id)
+      });
       
-      const response = await fetch(`/api/threads/${id}`);
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to load thread');
-      }
-      
-      const data = await response.json();
-      setSelectedThread(data.thread);
-      return data.thread;
+      setSelectedThread(result.thread);
+      return result.thread;
     } catch (err) {
       console.error('Error loading thread:', err);
       toast.error('Failed to load thread');
       return null;
-    } finally {
-      setIsLoading(false);
     }
-  }, [session, status]);
+  }, [isAuthenticated, queryClient]);
 
-  const updateThread = useCallback(async (id: string, updates: { title?: string; content?: string }) => {
-    if (status !== 'authenticated' || !session?.user) {
+  // Update thread
+  const updateThread = useCallback(async (id: string, updates: ThreadUpdateData) => {
+    if (!isAuthenticated) {
       return null;
     }
 
     try {
-      setIsLoading(true);
-      
-      const response = await fetch(`/api/threads/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update thread');
-      }
-      
-      const data = await response.json();
-      
-      // Update the threads list
-      setThreads((prev) => 
-        prev.map((thread) => (thread.id === id ? data.thread : thread))
-      );
-      
-      // Update selected thread if it's the one being updated
-      if (selectedThread?.id === id) {
-        setSelectedThread(data.thread);
-      }
-      
-      toast.success('Thread updated successfully');
-      return data.thread;
+      const result = await updateThreadMutation.mutateAsync({ id, updates });
+      return result.thread;
     } catch (err) {
-      console.error('Error updating thread:', err);
-      toast.error('Failed to update thread');
       return null;
-    } finally {
-      setIsLoading(false);
     }
-  }, [session, status, selectedThread]);
+  }, [isAuthenticated, updateThreadMutation]);
 
+  // Delete thread
   const deleteThread = useCallback(async (id: string) => {
-    if (status !== 'authenticated' || !session?.user) {
+    if (!isAuthenticated) {
       return false;
     }
 
     try {
-      setIsLoading(true);
-      
-      const response = await fetch(`/api/threads/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete thread');
-      }
-      
-      // Remove the thread from the list
-      setThreads((prev) => prev.filter((thread) => thread.id !== id));
-      
-      // Clear selected thread if it's the one being deleted
-      if (selectedThread?.id === id) {
-        setSelectedThread(null);
-      }
-      
-      toast.success('Thread deleted successfully');
+      await deleteThreadMutation.mutateAsync(id);
       return true;
     } catch (err) {
-      console.error('Error deleting thread:', err);
-      toast.error('Failed to delete thread');
       return false;
-    } finally {
-      setIsLoading(false);
     }
-  }, [session, status, selectedThread]);
+  }, [isAuthenticated, deleteThreadMutation]);
 
-  // Load threads on mount and when session changes
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchThreads();
+  // Manually trigger refetch
+  const fetchThreads = useCallback(() => {
+    if (isAuthenticated) {
+      return queryClient.invalidateQueries({ queryKey: ['threads'] });
     }
-  }, [status, fetchThreads]);
+  }, [isAuthenticated, queryClient]);
 
   return {
-    threads,
-    isLoading,
-    error,
+    threads: threadsQuery.data || [],
+    isLoading: threadsQuery.isPending || 
+               createThreadMutation.isPending || 
+               updateThreadMutation.isPending || 
+               deleteThreadMutation.isPending,
+    error: threadsQuery.error?.message || null,
     selectedThread,
     setSelectedThread,
     fetchThreads,
@@ -208,6 +169,7 @@ export function useThreads() {
     loadThread,
     updateThread,
     deleteThread,
-    isAuthenticated: status === 'authenticated',
+    isAuthenticated,
+    
   };
-} 
+}
