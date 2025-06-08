@@ -196,6 +196,3 @@ const App = () => {
 - `d3-hierarchy`: D3.js hierarchy utilities for tree layouts
 - `react`: React library
 
-## License
-
-MIT
