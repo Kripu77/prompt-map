@@ -4,10 +4,10 @@ import { initialMindMapValue } from '../../app/data/initial';
 
 // Default configuration
 export const DEFAULT_CONFIG: MindmapConfig = {
-  minDistance: 150,
+  minDistance: 200,
   centerX: 500,
   centerY: 400,
-  treeSize: [800, 600],
+  treeSize: [1200, 900],
 };
 
 // Parse markdown data into hierarchical structure

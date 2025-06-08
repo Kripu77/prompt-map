@@ -42,7 +42,12 @@ export function createD3TreeLayout(options: D3TreeLayoutOptions): LayoutResult {
   
   // Create D3 hierarchy and tree layout
   const root = hierarchy(d3Data) as HierarchyNode<D3Node>;
-  const treeLayout = createTree<D3Node>().size(treeSize);
+  const treeLayout = createTree<D3Node>()
+    .size(treeSize)
+    .separation((a, b) => {
+      // Increase separation between nodes
+      return a.parent === b.parent ? 2 : 3;
+    });
   const treeData = treeLayout(root);
   
   // Process D3 nodes and convert to ReactFlow format
@@ -54,22 +59,30 @@ export function createD3TreeLayout(options: D3TreeLayoutOptions): LayoutResult {
     let nodeStyle: CSSProperties;
     let branchColor: BranchColor | undefined;
     
+    // Calculate dynamic height based on text length for better readability
+    const textLength = d.data.name.length;
+    const getNodeHeight = (baseHeight: number, text: string) => {
+      const lines = Math.ceil(text.length / 20); // Approximate 20 chars per line
+      return Math.max(baseHeight, lines * 25 + 20); // 25px per line + padding
+    };
+    
     if (isRoot) {
       nodeStyle = {
         background: 'radial-gradient(circle, #667eea 0%, #764ba2 70%)',
         color: 'white',
         border: '4px solid #fff',
-        borderRadius: '50%',
-        fontSize: '18px',
+        borderRadius: '25px',
+        fontSize: '16px',
         fontWeight: 'bold',
-        width: 200,
-        height: 80,
+        width: 250,
+        height: getNodeHeight(100, d.data.name),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: '0 12px 30px rgba(102, 126, 234, 0.4)',
         textAlign: 'center',
-        lineHeight: '1.3'
+        lineHeight: '1.4',
+        padding: '10px'
       };
     } else if (isBranch) {
       branchColor = branchColors[d.data.id as keyof typeof branchColors] || branchColors['memcache'];
@@ -77,17 +90,18 @@ export function createD3TreeLayout(options: D3TreeLayoutOptions): LayoutResult {
         background: branchColor.gradient,
         color: 'white',
         border: `3px solid ${branchColor.primary}`,
-        borderRadius: '25px',
-        fontSize: '16px',
+        borderRadius: '20px',
+        fontSize: '14px',
         fontWeight: 'bold',
-        width: 160,
-        height: 60,
+        width: 200,
+        height: getNodeHeight(80, d.data.name),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: `0 8px 25px ${branchColor.primary}40`,
         textAlign: 'center',
-        lineHeight: '1.2'
+        lineHeight: '1.3',
+        padding: '8px'
       };
     } else {
       // Get parent branch color
@@ -97,17 +111,18 @@ export function createD3TreeLayout(options: D3TreeLayoutOptions): LayoutResult {
         background: `linear-gradient(135deg, ${branchColor.light} 0%, ${branchColor.primary}dd 100%)`,
         color: 'white',
         border: '2px solid #fff',
-        borderRadius: '20px',
-        fontSize: '13px',
+        borderRadius: '15px',
+        fontSize: '12px',
         fontWeight: '500',
-        width: 140,
-        height: 45,
+        width: 160,
+        height: getNodeHeight(60, d.data.name),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: `0 4px 15px ${branchColor.primary}30`,
         textAlign: 'center',
-        lineHeight: '1.2'
+        lineHeight: '1.3',
+        padding: '6px'
       };
     }
     
