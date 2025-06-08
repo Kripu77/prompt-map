@@ -61,6 +61,30 @@ export const fitContent = (
     
     if (markmapDataObj?.fit && typeof markmapDataObj.fit === 'function') {
       markmapDataObj.fit();
+      
+      // Additional viewport optimization
+      const container = svg.parentElement;
+      if (container) {
+        const containerRect = container.getBoundingClientRect();
+        const svgRect = svg.getBoundingClientRect();
+        
+        // Calculate optimal scale to fit content with padding
+        const scaleX = (containerRect.width * 0.9) / svgRect.width;
+        const scaleY = (containerRect.height * 0.9) / svgRect.height;
+        const optimalScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+        
+        if (optimalScale < 1) {
+          // Apply additional scaling if content is too large
+          const g = svg.querySelector('g');
+          if (g) {
+            const currentTransform = g.getAttribute('transform') || '';
+            const newTransform = currentTransform.includes('scale') 
+              ? currentTransform.replace(/scale\([^)]*\)/, `scale(${optimalScale})`)
+              : `${currentTransform} scale(${optimalScale})`;
+            g.setAttribute('transform', newTransform);
+          }
+        }
+      }
     }
   } catch (error) {
     console.error('Error fitting content:', error);
@@ -352,4 +376,4 @@ export const toggleFullscreen = (
   } catch (error) {
     console.error('Error toggling fullscreen:', error);
   }
-}; 
+};

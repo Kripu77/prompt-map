@@ -20,8 +20,8 @@ export function createD3TreeLayout(options: D3TreeLayoutOptions): LayoutResult {
     data,
     branchColors = DEFAULT_BRANCH_COLORS,
     treeSize = DEFAULT_CONFIG.treeSize!,
-    offsetX = 100,
-    offsetY = 200
+    offsetX = 50,
+    offsetY = 100
   } = options;
 
   const nodes: Node[] = [];
@@ -42,16 +42,101 @@ export function createD3TreeLayout(options: D3TreeLayoutOptions): LayoutResult {
   
   // Create D3 hierarchy and tree layout
   const root = hierarchy(d3Data) as HierarchyNode<D3Node>;
+  
+  // Calculate dynamic node dimensions for separation
+  const getNodeDimensions = (node: HierarchyNode<D3Node>) => {
+    const textLength = node.data.name.length;
+    const lines = Math.ceil(textLength / 25);
+    const baseHeight = node.depth === 0 ? 100 : node.depth === 1 ? 80 : 60;
+    const height = Math.max(baseHeight, lines * 20 + 30);
+    const width = node.depth === 0 ? 250 : node.depth === 1 ? 200 : 160;
+    return { width, height };
+  };
+  
+  // Advanced collision detection and positioning
+  const checkCollision = (rect1: {x: number, y: number, width: number, height: number}, 
+                         rect2: {x: number, y: number, width: number, height: number}, 
+                         padding: number = 20) => {
+    return !(rect1.x + rect1.width + padding < rect2.x || 
+             rect2.x + rect2.width + padding < rect1.x || 
+             rect1.y + rect1.height + padding < rect2.y || 
+             rect2.y + rect2.height + padding < rect1.y);
+  };
+  
   const treeLayout = createTree<D3Node>()
     .size(treeSize)
     .separation((a, b) => {
-      // Increase separation between nodes
-      return a.parent === b.parent ? 2 : 3;
+      const aDims = getNodeDimensions(a);
+      const bDims = getNodeDimensions(b);
+      
+      // Dynamic separation based on actual node dimensions
+      const totalHeight = aDims.height + bDims.height;
+      const baseSeparation = totalHeight / 60; // More aggressive base separation
+      
+      if (a.parent === b.parent) {
+        // Sibling nodes - ensure no overlap with padding
+        return Math.max(2.0, baseSeparation * 1.5);
+      } else {
+        // Different branches - larger separation
+        return Math.max(2.5, baseSeparation * 2.0);
+      }
     });
   const treeData = treeLayout(root);
   
-  // Process D3 nodes and convert to ReactFlow format
+  // Store node positions for collision detection
+  const nodePositions: Array<{x: number, y: number, width: number, height: number, node: HierarchyPointNode<D3Node>}> = [];
+  
+  // First pass: calculate initial positions and dimensions
   treeData.descendants().forEach((d: HierarchyPointNode<D3Node>) => {
+    const nodeDims = getNodeDimensions(d);
+    const initialX = (d.y || 0) + offsetX;
+    const initialY = (d.x || 0) + offsetY;
+    
+    nodePositions.push({
+      x: initialX,
+      y: initialY,
+      width: nodeDims.width,
+      height: nodeDims.height,
+      node: d
+    });
+  });
+  
+  // Second pass: resolve collisions by adjusting positions
+  for (let i = 0; i < nodePositions.length; i++) {
+    const currentNode = nodePositions[i];
+    let adjusted = true;
+    let attempts = 0;
+    
+    while (adjusted && attempts < 10) {
+      adjusted = false;
+      attempts++;
+      
+      for (let j = 0; j < nodePositions.length; j++) {
+        if (i === j) continue;
+        
+        const otherNode = nodePositions[j];
+        if (checkCollision(currentNode, otherNode, 25)) {
+          // Adjust position based on depth and relationship
+          if (currentNode.node.depth > otherNode.node.depth) {
+            // Move child nodes down
+            currentNode.y = otherNode.y + otherNode.height + 30;
+          } else if (currentNode.node.depth === otherNode.node.depth) {
+            // Move sibling nodes apart vertically
+            if (currentNode.y <= otherNode.y) {
+              currentNode.y = otherNode.y - currentNode.height - 30;
+            } else {
+              currentNode.y = otherNode.y + otherNode.height + 30;
+            }
+          }
+          adjusted = true;
+        }
+      }
+    }
+  }
+  
+  // Process D3 nodes and convert to ReactFlow format with adjusted positions
+  nodePositions.forEach((nodePos) => {
+    const d = nodePos.node;
     const isRoot = d.depth === 0;
     const isBranch = d.depth === 1;
     const isLeaf = d.depth === 2;
@@ -62,8 +147,8 @@ export function createD3TreeLayout(options: D3TreeLayoutOptions): LayoutResult {
     // Calculate dynamic height based on text length for better readability
     const textLength = d.data.name.length;
     const getNodeHeight = (baseHeight: number, text: string) => {
-      const lines = Math.ceil(text.length / 20); // Approximate 20 chars per line
-      return Math.max(baseHeight, lines * 25 + 20); // 25px per line + padding
+      const lines = Math.ceil(text.length / 25); // Increased chars per line for better fit
+      return Math.max(baseHeight, lines * 20 + 30); // Reduced line height with consistent padding
     };
     
     if (isRoot) {
@@ -139,8 +224,8 @@ export function createD3TreeLayout(options: D3TreeLayoutOptions): LayoutResult {
         hasChildren
       },
       position: { 
-        x: (d.y || 0) + offsetX, // Horizontal layout (swap x and y)
-        y: (d.x || 0) + offsetY  // Add offset for better positioning
+        x: nodePos.x, // Use collision-adjusted position
+        y: nodePos.y  // Use collision-adjusted position
       },
       style: nodeStyle,
       sourcePosition: Position.Right,

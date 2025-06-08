@@ -145,21 +145,28 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
     }
   }, [isMobile, markmapInstance, ref, scale, panOffset]);
 
-  // Auto-fit the content on mobile when mindmap loads
+  // Auto-fit the content when mindmap loads (both mobile and desktop)
   useEffect(() => {
-    if (isMobile && markmapInstance && ref) {
+    if (markmapInstance && ref) {
       const svgElement = ref as React.RefObject<SVGSVGElement>;
       if (svgElement.current) {
-        // Small delay to ensure mindmap is rendered
-        setTimeout(() => {
+        // Multiple attempts to ensure proper fitting
+        const attemptFit = () => {
           fitContent(svgElement.current);
           // Reset scale and offset after fitting
           setScale(1);
           setPanOffset({ x: 0, y: 0 });
-        }, 500);
+        };
+        
+        // Initial fit
+        setTimeout(attemptFit, 300);
+        // Secondary fit for complex layouts
+        setTimeout(attemptFit, 800);
+        // Final fit to ensure everything is properly positioned
+        setTimeout(attemptFit, 1500);
       }
     }
-  }, [isMobile, markmapInstance, mindmapData, ref]);
+  }, [markmapInstance, mindmapData, ref]);
   
   // Check if toolbar is mostly offscreen and show recovery button
   useEffect(() => {

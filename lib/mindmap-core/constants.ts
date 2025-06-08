@@ -4,10 +4,10 @@ import { initialMindMapValue } from '../../app/data/initial';
 
 // Default configuration
 export const DEFAULT_CONFIG: MindmapConfig = {
-  minDistance: 200,
-  centerX: 500,
-  centerY: 400,
-  treeSize: [1200, 900],
+  minDistance: 80,
+  centerX: 300,
+  centerY: 300,
+  treeSize: [1200, 900], // Larger canvas for collision-free positioning
 };
 
 // Parse markdown data into hierarchical structure
