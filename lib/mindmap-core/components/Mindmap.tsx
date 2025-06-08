@@ -179,18 +179,10 @@ const Flow: React.FC<MindmapProps> = ({
       )}
       {showBackground && <Background color="#aaa" gap={16} />}
       <Panel position="top-left">
-        <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>D3 Tree Layout</div>
+        <div className="mb-2.5 font-bold">D3 Tree Layout</div>
         <button
           onClick={onLayout}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
+          className="px-4 py-2 bg-blue-500 text-white border-none rounded cursor-pointer text-sm hover:bg-blue-600 transition-colors"
         >
           Refresh Layout
         </button>
@@ -206,7 +198,7 @@ export const Mindmap: React.FC<MindmapProps> = (props) => {
   const { className, style, ...flowProps } = props;
   
   return (
-    <div className={className} style={{ width: '100%', height: '100vh', ...style }}>
+    <div className={`w-full h-screen ${className || ''}`} style={style}>
       <ReactFlowProvider children={<Flow {...flowProps} />} />
     </div>
   );
