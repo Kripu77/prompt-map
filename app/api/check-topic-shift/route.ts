@@ -49,7 +49,7 @@ Do not include any other text in your response.`;
 
   try {
     const { text } = await generateText({
-      model: openrouter("openai/gpt-3.5-turbo"),
+      model: openrouter("deepseek/deepseek-r1-0528:free"),
       prompt: promptTemplate,
     });
 
