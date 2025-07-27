@@ -3,7 +3,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Square, Pause, Play, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';

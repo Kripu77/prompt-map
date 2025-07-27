@@ -71,14 +71,14 @@ export function ThreadsSidebar() {
   const { threads, isLoading, selectedThread, loadThread, deleteThread, fetchThreads } = useThreads();
   const { isOpen, setIsOpen } = useSidebarStore();
   const { mindmapData, setMindmapData, setPrompt, setIsLoading, setError } = useMindmapStore();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const pathname = usePathname();
 
   useEffect(() => {
     setSidebarHandler(setIsOpen);
     return () => {
-      const noop = (_value: boolean) => { /* empty function */ };
+      const noop = () => { /* empty function */ };
       setSidebarHandler(noop);
     };
   }, [setIsOpen]);
@@ -203,35 +203,6 @@ export function ThreadsSidebar() {
     // Calculate total threads to display with limit
     let threadCount = 0;
     let totalDisplayed = 0;
-
-    // Group threads by time periods
-    const groupThreadsByTime = (threads: Thread[]): GroupedThreads => {
-    const now = new Date();
-    
-    return threads.reduce((groups, thread) => {
-      const threadDate = new Date(thread.createdAt);
-      
-      if (isToday(threadDate)) {
-        groups.today.push(thread);
-      } else if (isYesterday(threadDate)) {
-        groups.yesterday.push(thread);
-      } else if (differenceInDays(now, threadDate) <= 7) {
-        groups.previous7Days.push(thread);
-      } else if (differenceInDays(now, threadDate) <= 30) {
-        groups.previous30Days.push(thread);
-      } else {
-        groups.older.push(thread);
-      }
-      
-      return groups;
-    }, {
-      today: [],
-      yesterday: [],
-      previous7Days: [],
-      previous30Days: [],
-      older: []
-    } as GroupedThreads);
-  };
 
     // Group threads by date
     filteredThreads.forEach(thread => {

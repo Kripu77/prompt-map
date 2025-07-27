@@ -15,7 +15,7 @@ export interface StreamingRequest {
 }
 
 const DEFAULT_STREAMING_CONFIG: Required<StreamingConfig> = {
-  model: "deepseek/deepseek-r1-0528:free",
+  model: "deepseek/deepseek-chat",
   temperature: 0.7,
   maxTokens: 3000,
   topP: 0.9,

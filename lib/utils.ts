@@ -48,7 +48,7 @@ export function generateTitleFromPrompt(userPrompt: string, mindmapContent?: str
   const cleanPrompt = userPrompt.replace(/[#*_~`]/g, '');
   
   // Get the first sentence or up to 50 characters
-  let title = cleanPrompt.split(/[.!?]/)[0].trim();
+  const title = cleanPrompt.split(/[.!?]/)[0].trim();
   
   // Ensure title doesn't exceed 200 characters (API validation limit)
   if (title.length > 200) {
