@@ -285,17 +285,10 @@ export function ThreadsSidebar() {
     try {
       const loadedThread = await loadThread(thread.id);
       if (loadedThread && loadedThread.content) {
-        // Update the mindmap store with the loaded content
         setMindmapData(loadedThread.content);
-        
-        // Also update the prompt to match the thread title
         setPrompt(loadedThread.title);
-        
-        // Clear any loading states
         setIsLoading(false);
         setError(null);
-        
-        // Close sidebar after selecting
         setIsOpen(false);
         
         console.log('Thread loaded successfully:', loadedThread.title);
@@ -315,7 +308,6 @@ export function ThreadsSidebar() {
     }
   };
 
-  // Format time in a more human-readable way like "3 minutes ago"
   const formatTime = (date: Date) => {
     const now = new Date();
     const minutesDiff = differenceInMinutes(now, date);
@@ -330,7 +322,6 @@ export function ThreadsSidebar() {
     }
   };
 
-  // Function to render each thread item
   const renderThreadItem = (thread: Thread) => (
     <div
       key={thread.id}
@@ -360,7 +351,6 @@ export function ThreadsSidebar() {
     </div>
   );
 
-  // Function to render a date group with its threads
   const renderDateGroup = (title: string, threads: Thread[]) => {
     if (threads.length === 0) return null;
     
@@ -378,7 +368,6 @@ export function ThreadsSidebar() {
 
   return (
     <>
-      {/* Dark overlay for mobile only */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 md:hidden"
@@ -444,7 +433,6 @@ export function ThreadsSidebar() {
                   {renderDateGroup("Previous 30 Days", groupedThreads.previous30Days)}
                   {renderDateGroup("Older", groupedThreads.older)}
                   
-                  {/* Loading indicator for more threads */}
                   {hasMoreThreads && (
                     <div 
                       ref={loaderRef} 
@@ -474,7 +462,6 @@ export function ThreadsSidebar() {
             </div>
           </ScrollArea>
           
-          {/* Fade out effect at the bottom when there are more threads */}
           {hasMoreThreads && !isLoadingMore && (
             <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none bg-gradient-to-t from-background to-transparent"></div>
           )}
