@@ -22,7 +22,6 @@ import { usePathname } from "next/navigation";
 import { Input } from "../../ui/input";
 import { setSidebarHandler } from "../../layout/header";
 
-// Custom close sidebar icon component
 function SidebarCloseIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -44,7 +43,6 @@ function SidebarCloseIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-// Interface to group threads by time periods
 interface GroupedThreads {
   today: Thread[];
   yesterday: Thread[];
@@ -69,32 +67,24 @@ export function ThreadsSidebar() {
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const loaderRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const hasFetchedRef = useRef<boolean>(false); // Track if we've already fetched threads
+  const hasFetchedRef = useRef<boolean>(false);
   const { threads, isLoading, selectedThread, loadThread, deleteThread, fetchThreads } = useThreads();
   const { isOpen, setIsOpen } = useSidebarStore();
-  const { mindmapData, setMindmapData } = useMindmapStore();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { mindmapData, setMindmapData, setPrompt, setIsLoading, setError } = useMindmapStore();
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const pathname = usePathname();
 
-  // Register the sidebar handler for backward compatibility
   useEffect(() => {
     setSidebarHandler(setIsOpen);
-    // Return a cleanup function
     return () => {
-      // Use a no-op function instead of null
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const noop = (_value: boolean) => { /* empty function */ };
       setSidebarHandler(noop);
     };
   }, [setIsOpen]);
 
-  // Refresh threads when the sidebar is opened or when mindmap data changes
   useEffect(() => {
-    // Only fetch if the user is authenticated and the sidebar is open
     if (isAuthenticated && isOpen && !isLoading) {
-      // If threads are empty or we haven't fetched yet, fetch them
       if (threads.length === 0 || !hasFetchedRef.current) {
         fetchThreads();
         hasFetchedRef.current = true;
@@ -102,23 +92,16 @@ export function ThreadsSidebar() {
     }
   }, [isOpen, isAuthenticated, fetchThreads, threads.length, isLoading]);
 
-  // Check for authentication status changes
   useEffect(() => {
-    // Reset fetched state when auth status changes
     if (status === 'unauthenticated') {
       hasFetchedRef.current = false;
     }
   }, [status]);
 
-  // Check for mindmap data changes to trigger a refresh
-  // This will ensure new mindmaps appear immediately
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     
-    // If sidebar is open and we have mindmap data, wait a bit and then refresh
-    // The slight delay ensures the backend has time to save the data
     if (isAuthenticated && isOpen && mindmapData) {
-      // Reset the fetched flag to allow a refresh
       hasFetchedRef.current = false;
       
       timeoutId = setTimeout(() => {
@@ -131,7 +114,6 @@ export function ThreadsSidebar() {
     };
   }, [mindmapData, isAuthenticated, isOpen, fetchThreads]);
 
-  // Close sidebar by default and on mobile
   useEffect(() => {
     const checkSize = () => {
       if (window.innerWidth < 768) {
@@ -139,22 +121,17 @@ export function ThreadsSidebar() {
       }
     };
     
-    // Check on mount
     checkSize();
     
-    // Listen for resize events
     window.addEventListener('resize', checkSize);
     return () => window.removeEventListener('resize', checkSize);
   }, [setIsOpen]);
 
-  // Calculate dynamic display limit based on screen height
   useEffect(() => {
     if (typeof window !== 'undefined' && isOpen) {
-      // Estimate: each mindmap item is approximately 60px tall
-      const availableHeight = window.innerHeight - 150; // Subtract header height and padding
+      const availableHeight = window.innerHeight - 150;
       const estimatedItemsPerScreen = Math.max(6, Math.floor(availableHeight / 60));
       
-      // Set initial limit to fit the screen plus a few more
       setDisplayLimit(estimatedItemsPerScreen + 4);
     }
   }, [isOpen]);
@@ -227,6 +204,35 @@ export function ThreadsSidebar() {
     let threadCount = 0;
     let totalDisplayed = 0;
 
+    // Group threads by time periods
+    const groupThreadsByTime = (threads: Thread[]): GroupedThreads => {
+    const now = new Date();
+    
+    return threads.reduce((groups, thread) => {
+      const threadDate = new Date(thread.createdAt);
+      
+      if (isToday(threadDate)) {
+        groups.today.push(thread);
+      } else if (isYesterday(threadDate)) {
+        groups.yesterday.push(thread);
+      } else if (differenceInDays(now, threadDate) <= 7) {
+        groups.previous7Days.push(thread);
+      } else if (differenceInDays(now, threadDate) <= 30) {
+        groups.previous30Days.push(thread);
+      } else {
+        groups.older.push(thread);
+      }
+      
+      return groups;
+    }, {
+      today: [],
+      yesterday: [],
+      previous7Days: [],
+      previous30Days: [],
+      older: []
+    } as GroupedThreads);
+  };
+
     // Group threads by date
     filteredThreads.forEach(thread => {
       threadCount++;
@@ -276,10 +282,27 @@ export function ThreadsSidebar() {
   }
 
   const handleThreadClick = async (thread: Thread) => {
-    const loadedThread = await loadThread(thread.id);
-    if (loadedThread && loadedThread.content) {
-      setMindmapData(loadedThread.content);
-      setIsOpen(false); // Close sidebar after selecting
+    try {
+      const loadedThread = await loadThread(thread.id);
+      if (loadedThread && loadedThread.content) {
+        // Update the mindmap store with the loaded content
+        setMindmapData(loadedThread.content);
+        
+        // Also update the prompt to match the thread title
+        setPrompt(loadedThread.title);
+        
+        // Clear any loading states
+        setIsLoading(false);
+        setError(null);
+        
+        // Close sidebar after selecting
+        setIsOpen(false);
+        
+        console.log('Thread loaded successfully:', loadedThread.title);
+      }
+    } catch (error) {
+      console.error('Error loading thread:', error);
+      setError('Failed to load mindmap');
     }
   };
 
@@ -459,4 +482,4 @@ export function ThreadsSidebar() {
       </div>
     </>
   );
-} 
+}
