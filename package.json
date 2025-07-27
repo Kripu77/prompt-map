@@ -42,6 +42,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.41.0",
+    "exa-js": "^1.8.23",
     "framer-motion": "^12.5.0",
     "hammerjs": "^2.0.8",
     "html-to-image": "^1.11.13",
