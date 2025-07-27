@@ -1,4 +1,5 @@
 import { streamingLLMClient } from '../llm/streaming-client';
+import { webSearchTool } from '../../tools/web-search-tool';
 import {
   createInitialMindmapPrompt,
   createFollowUpMindmapPrompt,
@@ -11,9 +12,12 @@ import type { MindmapGenerationOptions } from './mindmap-service';
 export class StreamingMindmapService {
   async streamMindmapGeneration(
     payload: PromptPayload,
-    options: MindmapGenerationOptions = {}
+    options: MindmapGenerationOptions & { enableWebSearch?: boolean } = {}
   ) {
     try {
+      // Enable web search by default since we've added it to the system prompts
+      const enableWebSearch = options.enableWebSearch !== false;
+      
       let messages;
       
       if (payload.context?.isFollowUp && payload.context.existingMindmap) {
@@ -37,11 +41,17 @@ export class StreamingMindmapService {
         messages = createInitialMindmapPrompt(enhancedPrompt);
       }
       
+      // Prepare tools if web search is enabled
+      const tools = enableWebSearch ? {
+        'search.web': webSearchTool
+      } : undefined;
+      
       const result = await streamingLLMClient.streamText({
         messages,
         config: {
           temperature: 0.7,
-          maxTokens: 3000,
+          maxTokens: 1200,
+          tools,
         }
       });
       

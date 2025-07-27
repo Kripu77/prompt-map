@@ -13,6 +13,7 @@ import type { MindmapGenerationOptions } from '@/lib/api/services/mindmap-servic
 
 export interface StreamingMindmapState {
   streamingContent: string;
+  reasoningContent: string;
   isStreaming: boolean;
   isComplete: boolean;
   error: string | null;
@@ -40,6 +41,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
   
   // Streaming state
   const [completion, setCompletion] = useState('');
+  const [reasoning, setReasoning] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
@@ -83,14 +85,14 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
   const handleCompletionTasks = useCallback(async (completedContent: string, currentPrompt: string) => {
     try {
       // Handle analytics and notifications for non-authenticated users
-      if (!isAuthenticated) {
+      if (!isAuthenticated && completedContent && completedContent.trim()) {
         const title = extractMindmapTitle(completedContent) || currentPrompt;
         recordAnonymousMindmap(currentPrompt, completedContent, title);
         showLoginNotification(true);
       }
       
       // Auto-save for authenticated users
-      if (isAuthenticated) {
+      if (isAuthenticated && completedContent && completedContent.trim()) {
         try {
           const title = extractMindmapTitle(completedContent) || currentPrompt;
           await createThread(title, completedContent);
@@ -118,6 +120,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       setIsLoading(true);
       setError(null);
       setCompletion('');
+      setReasoning('');
       setIsComplete(false);
       setProgress({ wordCount: 0, estimatedProgress: 0 });
 
@@ -175,11 +178,35 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
                   if (parsed && typeof parsed === 'string') {
                     accumulatedContent += parsed;
                     setCompletion(accumulatedContent);
+                    
+                    // Update progress
+                    const wordCount = accumulatedContent.split(/\s+/).filter(word => word.length > 0).length;
+                    const estimatedProgress = Math.min(Math.round((wordCount / 500) * 100), 95); // Estimate based on ~500 words
+                    setProgress({ wordCount, estimatedProgress });
                   }
                 } catch (e) {
                   // If it's not JSON, treat as plain text
                   accumulatedContent += textData;
                   setCompletion(accumulatedContent);
+                  
+                  // Update progress
+                  const wordCount = accumulatedContent.split(/\s+/).filter(word => word.length > 0).length;
+                  const estimatedProgress = Math.min(Math.round((wordCount / 500) * 100), 95); // Estimate based on ~500 words
+                  setProgress({ wordCount, estimatedProgress });
+                }
+              }
+            } else if (line.startsWith('g:')) {
+              // Reasoning chunk (AI SDK format)
+              const reasoningData = line.slice(2);
+              if (reasoningData) {
+                try {
+                  const parsed = JSON.parse(reasoningData);
+                  if (parsed && typeof parsed === 'string') {
+                    setReasoning(prev => prev + parsed);
+                  }
+                } catch (e) {
+                  // If it's not JSON, treat as plain text
+                  setReasoning(prev => prev + reasoningData);
                 }
               }
             }
@@ -238,6 +265,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
 
   const resetStream = useCallback(() => {
     setCompletion('');
+    setReasoning('');
     setIsComplete(false);
     setProgress({ wordCount: 0, estimatedProgress: 0 });
     setError(null);
@@ -246,6 +274,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
   return {
     // State
     streamingContent: completion,
+    reasoningContent: reasoning,
     isStreaming: isLoading,
     isComplete,
     error,
