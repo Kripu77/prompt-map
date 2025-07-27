@@ -45,7 +45,9 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
+        'x-vercel-ai-data-stream': 'v1',
       },
+      sendReasoning: true,
     });
 
   } catch (error) {
