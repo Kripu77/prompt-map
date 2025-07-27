@@ -1,49 +1,122 @@
-
 "use client";
 
-import { useRef } from 'react';
-import { useMindmapStore } from '@/lib/stores/mindmap-store';
-import { useMindmapGeneration } from '@/hooks/use-mindmap-generation';
-import { MindmapView, PromptInput } from '@/components/features/mindmap';
-import { LoaderCircle, Sparkles, CornerDownLeft, AlertCircle } from 'lucide-react';
-import { generateTitleFromPrompt } from '@/lib/utils';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useStreamingMindmap } from '@/hooks/use-streaming-mindmap';
+import { useMindmapStore } from '@/lib/stores/mindmap-store';
+import { StreamingMindmapView } from './streaming-mindmap-view';
+import { PromptInput } from './prompt-input';
+import { MindmapView } from './mindmap-view';
 import { Button } from '@/components/ui/button';
-
+import { LoaderCircle, Sparkles, CornerDownLeft, AlertCircle, Zap, Clock } from 'lucide-react';
+import { generateTitleFromPrompt } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export function MindmapContainer() {
-
-  const { mindmapData, isLoading, prompt } = useMindmapStore();
+  const { mindmapData, isLoading: storeLoading } = useMindmapStore();
   const {
+    streamingContent,
+    isStreaming,
+    isComplete,
     error,
-    promptHistory,
-    isFollowUpMode,
-    isUserGenerated,
-    topicShiftDetected,
-    processPrompt,
-    handleTopicShift,
-    continueDespiteShift,
-  } = useMindmapGeneration();
+    progress,
+    generateMindmap,
+    generateFollowUp,
+    stopGeneration,
+    resetStream,
+  } = useStreamingMindmap();
   
+  const [isFollowUpMode, setIsFollowUpMode] = useState(false);
+  const [promptHistory, setPromptHistory] = useState<string[]>([]);
+  const [topicShiftDetected, setTopicShiftDetected] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-
-  const mapTitle = mindmapData 
-    ? generateTitleFromPrompt(prompt, mindmapData) 
+  const displayContent = streamingContent || mindmapData;
+  const isGenerating = isStreaming || storeLoading;
+  
+  const mapTitle = displayContent 
+    ? generateTitleFromPrompt(promptHistory[promptHistory.length - 1] || "Mindmap", displayContent) 
     : "Generate a Mind Map";
 
-
   const handlePromptSubmit = async (value: string) => {
-    if (!isUserGenerated) {
-      // First prompt - start fresh
-      await processPrompt(value, false);
-    } else {
-      // Follow-up prompt
-      await processPrompt(value, true);
+    try {
+      resetStream();
+      
+      if (!isFollowUpMode || promptHistory.length === 0) {
+        setPromptHistory([value]);
+        setIsFollowUpMode(false);
+        
+        generateMindmap(value, {
+          useChainOfThought: true,
+          format: 'practical',
+        });
+      } else {
+        const shouldCheckTopicShift = await checkTopicShift();
+        
+        if (shouldCheckTopicShift) {
+          setPendingPrompt(value);
+          setTopicShiftDetected(true);
+          return;
+        }
+        
+        setPromptHistory(prev => [...prev, value]);
+        generateFollowUp(value, {
+          originalPrompt: promptHistory[0],
+          existingMindmap: displayContent,
+          previousPrompts: promptHistory,
+          isFollowUp: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error processing prompt:', error);
+      toast.error('Failed to process prompt. Please try again.');
     }
   };
 
-  
+  const checkTopicShift = async (): Promise<boolean> => {
+    if (!displayContent || promptHistory.length === 0) return false;
+    return false;
+  };
+
+  const handleTopicShift = () => {
+    if (pendingPrompt) {
+      setTopicShiftDetected(false);
+      setIsFollowUpMode(false);
+      setPromptHistory([pendingPrompt]);
+      resetStream();
+      
+      generateMindmap(pendingPrompt, {
+        useChainOfThought: true,
+        format: 'practical',
+      });
+      
+      setPendingPrompt(null);
+    }
+  };
+
+  const continueDespiteShift = () => {
+    if (pendingPrompt) {
+      setTopicShiftDetected(false);
+      setPromptHistory(prev => [...prev, pendingPrompt]);
+      
+      generateFollowUp(pendingPrompt, {
+        originalPrompt: promptHistory[0],
+        existingMindmap: displayContent,
+        previousPrompts: promptHistory,
+        isFollowUp: true,
+      });
+      
+      setPendingPrompt(null);
+    }
+  };
+
+  const handleSavePartial = () => {
+    if (streamingContent) {
+      toast.success('Partial mindmap saved!');
+    }
+  };
+
   return (
     <div className="bg-background w-full h-full relative overflow-hidden">
       {/* Background Effects */}
@@ -58,15 +131,42 @@ export function MindmapContainer() {
         transition={{ duration: 0.4, delay: 0.2 }}
       >
         <div className="flex flex-col items-center justify-center">
-          <h1 className="text-center text-xl sm:text-3xl font-bold text-foreground drop-shadow-sm bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-            {mapTitle}
-          </h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-center text-xl sm:text-3xl font-bold text-foreground drop-shadow-sm bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+              {mapTitle}
+            </h1>
+            {isStreaming && (
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                <Zap className="h-5 w-5 text-primary" />
+              </motion.div>
+            )}
+          </div>
           
           {isFollowUpMode && promptHistory.length > 0 && (
-            <div className="flex items-center justify-center mt-2 space-x-1 text-xs text-muted-foreground/70">
+            <div className="flex items-center justify-center space-x-1 text-xs text-muted-foreground/70">
               <CornerDownLeft className="h-3 w-3" />
               <span>Follow-up mode: Refine your mindmap with additional questions</span>
             </div>
+          )}
+
+          {/* Streaming Stats */}
+          {isStreaming && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-4 mt-2 text-xs text-muted-foreground bg-background/50 backdrop-blur-sm rounded-full px-3 py-1"
+            >
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>{progress.wordCount} words</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>{Math.round(progress.estimatedProgress)}% complete</span>
+              </div>
+            </motion.div>
           )}
         </div>
       </motion.div>
@@ -75,33 +175,9 @@ export function MindmapContainer() {
       <div className="w-full h-[calc(100vh-5rem)] flex items-center justify-center pt-12 pb-24 sm:pt-16 sm:pb-28 relative overflow-hidden">
         <div className="w-full h-full flex items-center justify-center max-w-[100%] sm:max-w-[90%] md:max-w-[85%] mx-auto relative z-10">
           
-          {/* Mobile Usage Tip */}
-          {mindmapData && (
-            <motion.div
-              className="absolute top-0 left-0 right-0 z-10 px-4 py-2 text-xs text-center bg-background/80 backdrop-blur-sm rounded-md shadow-sm md:hidden mobile-tip transition-all duration-300"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1 }}
-              exit={{ opacity: 0, y: -20 }}
-              onAnimationComplete={() => {
-                setTimeout(() => {
-                  const element = document.querySelector('.mobile-tip');
-                  if (element) {
-                    element.classList.add('opacity-0', '-translate-y-5');
-                    setTimeout(() => {
-                      element.classList.add('hidden');
-                    }, 300);
-                  }
-                }, 5000);
-              }}
-            >
-              <p>Pinch to zoom and drag to move around the mindmap</p>
-            </motion.div>
-          )}
-
           {/* Content States */}
           <AnimatePresence mode="wait">
-            {!mindmapData && !isLoading ? (
+            {!displayContent && !isGenerating ? (
               <motion.div 
                 className="h-full flex flex-col items-center justify-center max-w-md text-center px-4"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -118,13 +194,13 @@ export function MindmapContainer() {
                   <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 text-primary opacity-80" />
                 </motion.div>
                 <p className="text-center text-muted-foreground/90 text-sm sm:text-base mb-1 leading-relaxed">
-                  Enter a topic in the input below to generate a beautiful, interactive mind map
+                  Enter a topic in the input below to generate a beautiful, interactive mind map with real-time streaming
                 </p>
                 <p className="text-xs text-muted-foreground/70 mt-1">
-                  Powered by AI to organize your thoughts
+                  Powered by AI with instant streaming for the best experience
                 </p>
               </motion.div>
-            ) : isLoading ? (
+            ) : isGenerating && !streamingContent ? (
               <motion.div 
                 className="h-full flex flex-col items-center justify-center"
                 initial={{ opacity: 0 }}
@@ -141,7 +217,7 @@ export function MindmapContainer() {
                   <LoaderCircle className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary" />
                 </motion.div>
                 <p className="text-center text-muted-foreground mt-3 text-sm sm:text-base">
-                  {isFollowUpMode ? "Refining your mind map..." : "Generating your mind map..."}
+                  {isFollowUpMode ? "Refining your mind map..." : "Gathering insights and organizing ideas..."}
                 </p>
               </motion.div>
             ) : (
@@ -151,7 +227,18 @@ export function MindmapContainer() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
               >
-                <MindmapView ref={svgRef} />
+                {streamingContent ? (
+                  <StreamingMindmapView
+                    streamingContent={streamingContent}
+                    isStreaming={isStreaming}
+                    isComplete={isComplete}
+                    progress={progress}
+                    onStop={stopGeneration}
+                    onSave={handleSavePartial}
+                  />
+                ) : (
+                  <MindmapView ref={svgRef} />
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -200,7 +287,7 @@ export function MindmapContainer() {
         )}
       </AnimatePresence>
 
-      {/* Prompt Input */}
+      {/* Enhanced Prompt Input */}
       <motion.div 
         className="prompt-input-container fixed bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-[95%] sm:max-w-2xl px-2 sm:px-4 z-[200]"
         initial={{ opacity: 0, y: 30 }}
@@ -214,10 +301,14 @@ export function MindmapContainer() {
       >
         <PromptInput
           onSubmit={handlePromptSubmit}
-          loading={isLoading || topicShiftDetected}
+          loading={isGenerating || topicShiftDetected}
           error={error}
           isFollowUpMode={isFollowUpMode}
-          placeholder={isFollowUpMode ? "Ask a follow-up question to refine the mindmap..." : "Core concepts of Atomic Habits, Clean Code, etc."}
+          placeholder={
+            isFollowUpMode 
+              ? "Ask a follow-up question to refine the mindmap..." 
+              : "Core concepts of Atomic Habits, Clean Code, etc."
+          }
           disabled={topicShiftDetected}
         />
       </motion.div>
