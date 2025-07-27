@@ -49,9 +49,15 @@ export function SaveThreadButton() {
       return;
     }
 
+ 
+    if (!mindmapData || !mindmapData.trim()) {
+      toast.error("No mind map content to save");
+      return;
+    }
+
     try {
       setIsSaving(true);
-      await createThread(title, mindmapData || "");
+      await createThread(title, mindmapData);
       // Refresh the threads list to update the sidebar
       fetchThreads();
       setIsOpen(false);
@@ -119,4 +125,4 @@ export function SaveThreadButton() {
       </Dialog>
     </>
   );
-} 
+}
