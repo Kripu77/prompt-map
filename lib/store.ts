@@ -1,36 +1,18 @@
-import { initialMindMapValue } from '@/app/data';
-import { create } from 'zustand';
+export { 
+  useMindmapStore, 
+  useSidebarStore,
+  useThreadsStore,
+  mindmapSelectors,
+  sidebarSelectors,
+  threadsSelectors,
+  resetAllStores,
+  getAppState
+} from './stores';
 
-type MindmapState = {
-  prompt: string;
-  isLoading: boolean;
-  mindmapData: string;
-  mindmapRef: SVGSVGElement | null;
-  setPrompt: (prompt: string) => void;
-  setIsLoading: (isLoading: boolean) => void;
-  setMindmapData: (data: string) => void;
-  setMindmapRef: (ref: SVGSVGElement) => void;
-};
-
-export const useMindmapStore = create<MindmapState>((set) => ({
-  prompt: 'AI-Powered Mind Map Generator',
-  isLoading: false,
-  mindmapData: initialMindMapValue,
-  mindmapRef: null,
-  
-  setPrompt: (prompt) => set({ prompt }),
-  setIsLoading: (isLoading) => set({ isLoading }),
-  setMindmapData: (data) => set({ mindmapData: data }),
-  setMindmapRef: (ref) => set({ mindmapRef: ref }),
-}));
-
-// Add state for tracking sidebar open status
-interface SidebarState {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-}
-
-export const useSidebarStore = create<SidebarState>((set) => ({
-  isOpen: false,
-  setIsOpen: (isOpen) => set({ isOpen }),
-}));
+// Re-export types
+export type {
+  MindmapStore,
+  SidebarStore,
+  ThreadsStore,
+  PromptHistoryItem,
+} from '@/types/store';

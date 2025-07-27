@@ -7,14 +7,13 @@ import {
   useQueryClient
 } from '@tanstack/react-query';
 import {
-  Thread,
-  ThreadUpdateData,
   fetchThreadsAPI,
   getThreadAPI,
   createThreadAPI,
   updateThreadAPI,
   deleteThreadAPI
 } from '@/lib/api/mindmap';
+import type { Thread, ThreadUpdateRequest } from '@/types/api';
 
 export function useThreads() {
   const { data: session, status } = useSession();
@@ -126,7 +125,7 @@ export function useThreads() {
   }, [isAuthenticated, queryClient]);
 
   // Update thread
-  const updateThread = useCallback(async (id: string, updates: ThreadUpdateData) => {
+  const updateThread = useCallback(async (id: string, updates: ThreadUpdateRequest) => {
     if (!isAuthenticated) {
       return null;
     }

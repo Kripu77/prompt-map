@@ -1,49 +1,42 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { anonymousMindmaps } from "@/lib/db/schema";
+import { NextRequest } from 'next/server';
+import { analyticsService } from '@/lib/api/services/analytics-service';
+import {
+  validateRequestBody,
+  createValidationErrorResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  checkRateLimit,
+  getClientIdentifier,
+  AnonymousAnalyticsSchema,
+} from '@/lib/api/middleware/validation';
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, title, content, sessionId, userAgent, referrer } = await request.json();
-    
-    if (!prompt || !content) {
-      return NextResponse.json(
-        { error: "Prompt and content are required" },
-        { status: 400 }
-      );
+    const clientId = getClientIdentifier(request);
+    if (!checkRateLimit(clientId, 100, 60000)) {
+      return createErrorResponse('Rate limit exceeded', 429, 'RATE_LIMIT_EXCEEDED');
     }
+
+    const validation = await validateRequestBody(request, AnonymousAnalyticsSchema);
+    if (!validation.success) {
+      return createValidationErrorResponse(validation.errors!);
+    }
+
+    const data = validation.data!;
     
-    // Generate unique ID
-    const id = crypto.randomUUID();
-    
-    // Get user agent and referrer from request headers if not provided
-    const userAgentFromHeader = request.headers.get('user-agent') || undefined;
-    const referrerFromHeader = request.headers.get('referer') || undefined;
-    
-    // Save the anonymous mindmap data
-    await db
-      .insert(anonymousMindmaps)
-      .values({
-        id,
-        sessionId: sessionId || crypto.randomUUID(), // Use provided sessionId or generate one
-        prompt,
-        title: title || "Untitled", // Default title if not provided
-        content,
-        createdAt: new Date(),
-        userAgent: userAgent || userAgentFromHeader,
-        referrer: referrer || referrerFromHeader
-      })
-      .returning();
-    
-    return NextResponse.json({ 
-      success: true,
-      message: "Anonymous data collected for analytics"
-    });
+    // Enhance with request headers if not provided
+    const enhancedData = {
+      ...data,
+      title: data.title || 'Untitled',
+      sessionId: data.sessionId || crypto.randomUUID(),
+      userAgent: data.userAgent || request.headers.get('user-agent') || '',
+      referrer: data.referrer || request.headers.get('referer') || '',
+    };
+
+    await analyticsService.recordAnonymousMindmap(enhancedData);
+    return createSuccessResponse({ recorded: true });
   } catch (error) {
-    console.error("Error saving anonymous mindmap data:", error);
-    return NextResponse.json(
-      { error: "Failed to save analytics data" },
-      { status: 500 }
-    );
+    console.error('Error saving analytics data:', error);
+    return createErrorResponse('Failed to save analytics data', 500, 'ANALYTICS_FAILED');
   }
 } 

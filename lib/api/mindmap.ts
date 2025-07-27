@@ -1,55 +1,23 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-
-// Types
-interface PromptPayload {
-  prompt: string
-  context?: {
-    originalPrompt?: string
-    existingMindmap?: unknown // Changed from any
-    previousPrompts?: string[]
-    isFollowUp?: boolean
-    checkTopicShift?: boolean
-  }
-}
-
-interface TopicShiftResponse {
-  isTopicShift: boolean
-}
-
-interface MindmapResponse {
-  content: unknown // Changed from any
-}
-
-interface AnonymousMindmapData {
-    prompt: string;
-    content: string;
-    title: string;
-    sessionId: string;
-    userAgent: string;
-    referrer: string;
-  }
-  
-
-export interface Thread {
-    id: string;
-    title: string;
-    createdAt: string;
-    updatedAt: string;
-    content: string;
-    userId: string;
-  }
-  
-  export type ThreadUpdateData = {
-    title?: string;
-    content?: string;
-  }
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { 
+  PromptPayload, 
+  TopicShiftResponse, 
+  MindmapResponse, 
+  AnonymousMindmapData,
+  ThreadCreateRequest,
+  ThreadUpdateRequest,
+  ThreadsResponse,
+  ThreadResponse,
+  ThreadDeleteResponse,
+  ApiError
+} from '@/types/api';
   
 
 // API calls
 export function useCheckTopicShift() {
   return useMutation({
     mutationFn: async (payload: PromptPayload) => {
-      const response = await fetch('/api/check-topic-shift', {
+      const response = await fetch('/api/mindmap/topic-shift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -59,7 +27,9 @@ export function useCheckTopicShift() {
         throw new Error('Failed to check topic shift')
       }
       
-      return response.json() as Promise<TopicShiftResponse>
+      const result = await response.json()
+      // The new API returns { success: true, data: { isTopicShift, confidence, reason, recommendation } }
+      return result.data as TopicShiftResponse
     }
   })
 }
@@ -67,7 +37,7 @@ export function useCheckTopicShift() {
 export function useGenerateMindmap() {
   return useMutation({
     mutationFn: async (payload: PromptPayload) => {
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/mindmap/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -77,65 +47,73 @@ export function useGenerateMindmap() {
         throw new Error('Failed to generate mind map')
       }
       
-      return response.json() as Promise<MindmapResponse>
+      const result = await response.json()
+      // The new API returns { success: true, data: { content, metadata } }
+      return result.data as MindmapResponse
     }
   })
 }
 
 
-  // API call function separated for clean mutation setup
-  export const recordMindmapAPI = async (data: AnonymousMindmapData): Promise<boolean> => {
-    const response = await fetch('/api/analytics/anonymous-mindmap', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json() as ErrorResponse; // Changed from any
-      throw new Error(errorData.error || errorData.message || 'Failed to record mindmap analytics');
-    }
-    
-    return true;
-  };
-
-
-// Thread API Functions
-export async function fetchThreadsAPI(): Promise<{ threads: Thread[] }> {
-  const response = await fetch('/api/threads');
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to fetch threads');
-  }
-  
-  return response.json();
-}
-
-export async function getThreadAPI(id: string): Promise<{ thread: Thread }> {
-  const response = await fetch(`/api/threads/${id}`);
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to load thread');
-  }
-  
-  return response.json();
-}
-
-export async function createThreadAPI({ title, content }: { title: string, content: string }): Promise<{ thread: Thread }> {
-  const response = await fetch('/api/threads', {
+// API call function separated for clean mutation setup
+export const recordMindmapAPI = async (data: AnonymousMindmapData): Promise<boolean> => {
+  const response = await fetch('/api/analytics/anonymous-mindmap', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, content }),
+    body: JSON.stringify(data),
   });
   
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to create thread');
+    const errorData = await response.json() as ApiError;
+    throw new Error(errorData.error || errorData.message || 'Failed to record mindmap analytics');
   }
   
-  return response.json();
+  return true;
+};
+
+
+// Thread API Functions
+export async function fetchThreadsAPI(): Promise<ThreadsResponse> {
+  const response = await fetch('/api/threads');
+  
+  if (!response.ok) {
+    const errorData = await response.json() as ApiError;
+    throw new Error(errorData.error || errorData.message || 'Failed to fetch threads');
+  }
+  
+  const result = await response.json();
+  // The new API returns { success: true, data: { threads: [...] } }
+  return result.data as ThreadsResponse;
+}
+
+export async function getThreadAPI(id: string): Promise<ThreadResponse> {
+  const response = await fetch(`/api/threads/${id}`);
+  
+  if (!response.ok) {
+    const errorData = await response.json() as ApiError;
+    throw new Error(errorData.error || errorData.message || 'Failed to load thread');
+  }
+  
+  const result = await response.json();
+  // The new API returns { success: true, data: { thread: {...} } }
+  return result.data as ThreadResponse;
+}
+
+export async function createThreadAPI(data: ThreadCreateRequest): Promise<ThreadResponse> {
+  const response = await fetch('/api/threads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json() as ApiError;
+    throw new Error(errorData.error || errorData.message || 'Failed to create thread');
+  }
+  
+  const result = await response.json();
+  // The new API returns { success: true, data: { thread: {...} } }
+  return result.data as ThreadResponse;
 }
 
 // Hook to create thread with proper cache management
@@ -151,7 +129,7 @@ export function useCreateThread() {
   });
 }
 
-export async function updateThreadAPI({ id, updates }: { id: string, updates: ThreadUpdateData }): Promise<{ thread: Thread }> {
+export async function updateThreadAPI({ id, updates }: { id: string, updates: ThreadUpdateRequest }): Promise<ThreadResponse> {
   const response = await fetch(`/api/threads/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -159,27 +137,26 @@ export async function updateThreadAPI({ id, updates }: { id: string, updates: Th
   });
   
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to update thread');
+    const errorData = await response.json() as ApiError;
+    throw new Error(errorData.error || errorData.message || 'Failed to update thread');
   }
   
-  return response.json();
+  const result = await response.json();
+  // The new API returns { success: true, data: { thread: {...} } }
+  return result.data as ThreadResponse;
 }
 
-export async function deleteThreadAPI(id: string): Promise<{ success: boolean }> {
+export async function deleteThreadAPI(id: string): Promise<ThreadDeleteResponse> {
   const response = await fetch(`/api/threads/${id}`, {
     method: 'DELETE',
   });
   
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to delete thread');
+    const errorData = await response.json() as ApiError;
+    throw new Error(errorData.error || errorData.message || 'Failed to delete thread');
   }
   
-  return { success: true };
-}
-
-interface ErrorResponse {
-  error?: string;
-  message?: string;
+  const result = await response.json();
+  // The new API returns { success: true, data: { success: true, deletedId: "..." } }
+  return result.data as ThreadDeleteResponse;
 }

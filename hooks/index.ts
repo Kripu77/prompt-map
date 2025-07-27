@@ -1,4 +1,4 @@
-export * from "./markmap"
+export * from './use-mindmap-generation';
 export * from './use-local-storage';
 export * from './use-mindmap';
 export * from './use-draggable-toolbar';
