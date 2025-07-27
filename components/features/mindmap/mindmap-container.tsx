@@ -16,6 +16,7 @@ export function MindmapContainer() {
   const { mindmapData, isLoading: storeLoading } = useMindmapStore();
   const {
     streamingContent,
+    reasoningContent,
     isStreaming,
     isComplete,
     error,
@@ -230,11 +231,13 @@ export function MindmapContainer() {
                 {streamingContent ? (
                   <StreamingMindmapView
                     streamingContent={streamingContent}
+                    reasoningContent={reasoningContent}
                     isStreaming={isStreaming}
                     isComplete={isComplete}
                     progress={progress}
                     onStop={stopGeneration}
                     onSave={handleSavePartial}
+                    topic={promptHistory[promptHistory.length - 1] || "Mind Map Generation"}
                   />
                 ) : (
                   <MindmapView ref={svgRef} />
