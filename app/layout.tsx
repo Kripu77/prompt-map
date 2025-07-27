@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
-import { SessionProvider } from "@/components/auth/session-provider";
-import { Header } from "@/components/ui/header";
-import { ThreadsSidebar } from "@/components/ui/threads-sidebar";
+import { ThemeProvider, AuthSidebarProvider } from "@/components/providers";
+import { SessionProvider } from "@/components/features/auth";
+import { Header, ScalableContent } from "@/components/layout";
+import { ThreadsSidebar } from "@/components/features/threads";
 import { Toaster } from "@/components/ui/toaster";
-import { ScalableContent } from "@/components/ui/scalable-content";
-import { AuthSidebarProvider } from "@/components/auth-sidebar-provider";
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css";
