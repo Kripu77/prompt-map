@@ -1,4 +1,4 @@
-import { SignInForm } from "@/components/auth/sign-in-form";
+import { SignInForm } from '@/components/features/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";

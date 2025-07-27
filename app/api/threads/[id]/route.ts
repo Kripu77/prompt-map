@@ -1,145 +1,90 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { conversations } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { NextRequest } from 'next/server';
+import { threadsService } from '@/lib/api/services/threads-service';
+import {
+  validateRequestBody,
+  createValidationErrorResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  checkRateLimit,
+  getClientIdentifier,
+  requireAuth,
+  ThreadUpdateSchema,
+} from '@/lib/api/middleware/validation';
 
 export async function GET(
-  request: NextRequest
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Extract id from the URL pathname
-    const id = request.nextUrl.pathname.split('/').pop();
-    
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    
-    const userId = session.user.id;
-    const threadId = id;
-    
-    // Fetch the specific thread and ensure it belongs to the user
-    const thread = await db.query.conversations.findFirst({
-      where: and(
-        eq(conversations.id, threadId!),
-        eq(conversations.userId, userId)
-      ),
-    });
-    
+    const { error, userId } = await requireAuth();
+    if (error) return error;
+
+    const params = await context.params;
+    const thread = await threadsService.getThread(params.id, userId!);
     if (!thread) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+      return createErrorResponse('Thread not found', 404, 'THREAD_NOT_FOUND');
     }
-    
-    return NextResponse.json({ thread });
+
+    return createSuccessResponse({ thread });
   } catch (error) {
-    console.error("Error fetching thread:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch thread" },
-      { status: 500 }
-    );
+    console.error('Error fetching thread:', error);
+    return createErrorResponse('Failed to fetch thread', 500, 'FETCH_FAILED');
   }
 }
 
 export async function PUT(
-  request: NextRequest
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Extract id from the URL pathname
-    const id = request.nextUrl.pathname.split('/').pop();
-    
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const clientId = getClientIdentifier(request);
+    if (!checkRateLimit(clientId, 10, 60000)) {
+      return createErrorResponse('Rate limit exceeded', 429, 'RATE_LIMIT_EXCEEDED');
     }
-    
-    const userId = session.user.id;
-    const threadId = id;
-    
-    // Check if thread exists and belongs to user
-    const existingThread = await db.query.conversations.findFirst({
-      where: and(
-        eq(conversations.id, threadId!),
-        eq(conversations.userId, userId)
-      ),
-    });
-    
-    if (!existingThread) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+
+    const { error, userId } = await requireAuth();
+    if (error) return error;
+
+    const validation = await validateRequestBody(request, ThreadUpdateSchema);
+    if (!validation.success) {
+      return createValidationErrorResponse(validation.errors!);
     }
-    
-    const { title, content } = await request.json();
-    
-    if (!title && !content) {
-      return NextResponse.json(
-        { error: "No updates provided" },
-        { status: 400 }
-      );
+
+    const params = await context.params;
+    const thread = await threadsService.updateThread(params.id, validation.data!, userId!);
+    if (!thread) {
+      return createErrorResponse('Thread not found', 404, 'THREAD_NOT_FOUND');
     }
-    
-    // Update the thread
-    const updatedThread = await db
-      .update(conversations)
-      .set({
-        ...(title && { title }),
-        ...(content && { content }),
-        updatedAt: new Date(),
-      })
-      .where(eq(conversations.id, threadId!))
-      .returning();
-    
-    return NextResponse.json({ thread: updatedThread[0] });
+
+    return createSuccessResponse({ thread });
   } catch (error) {
-    console.error("Error updating thread:", error);
-    return NextResponse.json(
-      { error: "Failed to update thread" },
-      { status: 500 }
-    );
+    console.error('Error updating thread:', error);
+    return createErrorResponse('Failed to update thread', 500, 'UPDATE_FAILED');
   }
 }
 
 export async function DELETE(
-  request: NextRequest
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Extract id from the URL pathname
-    const id = request.nextUrl.pathname.split('/').pop();
-    
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const clientId = getClientIdentifier(request);
+    if (!checkRateLimit(clientId, 5, 60000)) {
+      return createErrorResponse('Rate limit exceeded', 429, 'RATE_LIMIT_EXCEEDED');
     }
-    
-    const userId = session.user.id;
-    const threadId = id;
-    
-    // Check if thread exists and belongs to user
-    const existingThread = await db.query.conversations.findFirst({
-      where: and(
-        eq(conversations.id, threadId!),
-        eq(conversations.userId, userId)
-      ),
-    });
-    
-    if (!existingThread) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+
+    const { error, userId } = await requireAuth();
+    if (error) return error;
+
+    const params = await context.params;
+    const success = await threadsService.deleteThread(params.id, userId!);
+    if (!success) {
+      return createErrorResponse('Thread not found', 404, 'THREAD_NOT_FOUND');
     }
-    
-    // Delete the thread
-    await db
-      .delete(conversations)
-      .where(eq(conversations.id, threadId!));
-    
-    return NextResponse.json({ success: true });
+
+    return createSuccessResponse({ success: true, deletedId: params.id });
   } catch (error) {
-    console.error("Error deleting thread:", error);
-    return NextResponse.json(
-      { error: "Failed to delete thread" },
-      { status: 500 }
-    );
+    console.error('Error deleting thread:', error);
+    return createErrorResponse('Failed to delete thread', 500, 'DELETE_FAILED');
   }
 } 
