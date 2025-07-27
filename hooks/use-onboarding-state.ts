@@ -8,12 +8,15 @@ import { fetchOnboardingStateAPI, updateOnboardingStateAPI } from '@/lib/api/onb
 
 // Define interface for onboarding state
 export interface OnboardingState {
-  hasCompletedOnboarding: boolean;
-  lastCompletedStep: number;
+  hasCompletedOnboarding?: boolean;
+  lastCompletedStep?: number;
   dismissedAt?: number;
-  completedSteps: string[];
+  completedSteps?: string[];
   lastSeenAt?: number;
-  onboardingVersion: number;
+  onboardingVersion?: number;
+  currentStep?: number;
+  isCompleted?: boolean;
+  lastUpdated?: string;
 }
 
 // Default state when a user is completely new
@@ -22,6 +25,8 @@ const defaultOnboardingState: OnboardingState = {
   lastCompletedStep: -1,
   completedSteps: [],
   onboardingVersion: 1,
+  currentStep: 0,
+  isCompleted: false,
 };
 
 /**
@@ -67,14 +72,14 @@ export function useOnboardingState(userId?: string) {
 
   // Helper functions (remain mostly unchanged)
   const markStepCompleted = useCallback((stepId: string, stepIndex: number) => {
-    const completedSteps = [...state.completedSteps];
+    const completedSteps = [...(state.completedSteps || [])];
     if (!completedSteps.includes(stepId)) {
       completedSteps.push(stepId);
     }
     
     updateState({
       completedSteps,
-      lastCompletedStep: Math.max(state.lastCompletedStep, stepIndex),
+      lastCompletedStep: Math.max(state.lastCompletedStep || -1, stepIndex),
       lastSeenAt: Date.now(),
     });
   }, [state, updateState]);

@@ -20,7 +20,8 @@ export async function fetchOnboardingStateAPI(
       return localState!;
     }
     
-    return await response.json();
+    const result = await response.json();
+    return result.data || result;
   } catch (error) {
     console.error('Failed to load onboarding state:', error);
     return localState!;
@@ -62,5 +63,6 @@ export async function updateOnboardingStateAPI({
   }
   
   // Return the server response
-  return await response.json();
+  const result = await response.json();
+  return result.data || result;
 }

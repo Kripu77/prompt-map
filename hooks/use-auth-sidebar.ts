@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useSidebarStore } from '@/lib/store';
+import { useSidebarStore } from '@/lib/stores/sidebar-store';
 import { useThreads } from './use-threads';
 import { useQueryClient } from '@tanstack/react-query';
 

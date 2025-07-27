@@ -9,10 +9,8 @@ import { ZoomBehavior } from 'd3';
 import { INode } from 'markmap-common';
 import * as d3 from 'd3';
 
-// Create a transformer instance once, not on each render
 const transformer = new Transformer();
 
-// Better typing for Markmap instance with proper d3 zoom behavior
 interface MarkmapWithMethods {
   // Include all standard Markmap methods we need
   setData: (data: any) => void;
