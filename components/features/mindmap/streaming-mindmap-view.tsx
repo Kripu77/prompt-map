@@ -3,14 +3,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Square, Pause, Play, Save, ChevronDown, Brain } from 'lucide-react';
+import { Square, Pause, Play, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
 
 interface StreamingMindmapViewProps {
   streamingContent: string;
-  reasoningContent?: string;
   isStreaming: boolean;
   isComplete: boolean;
   progress: {
@@ -20,25 +18,22 @@ interface StreamingMindmapViewProps {
   onStop: () => void;
   onSave?: () => void;
   className?: string;
-  topic?: string;
 }
 
 export function StreamingMindmapView({
   streamingContent,
-  reasoningContent,
   isStreaming,
   isComplete,
   progress,
   onStop,
   onSave,
   className,
-  topic,
 }: StreamingMindmapViewProps) {
   const { setMindmapRef } = useMindmapStore();
   const svgRef = useRef<SVGSVGElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [displayContent, setDisplayContent] = useState('');
-  const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
+
 
   useEffect(() => {
     if (!streamingContent) {
@@ -228,124 +223,6 @@ export function StreamingMindmapView({
                 </div>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Reasoning Display - Right Side Dropdown */}
-      <AnimatePresence>
-        {reasoningContent && reasoningContent.trim() && (
-          <motion.div
-            initial={{ x: 100, opacity: 0, scale: 0.95 }}
-            animate={{ x: 0, opacity: 1, scale: 1 }}
-            exit={{ x: 100, opacity: 0, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-20 right-6 z-50 w-96 max-w-md"
-          >
-            <Card className="bg-background/95 backdrop-blur-xl border-border shadow-2xl">
-              <CardHeader 
-                className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
-                onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
-              >
-                <CardTitle className="flex items-center gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-primary" />
-                    <span className="font-medium">AI Reasoning</span>
-                  </div>
-                  <div className="flex items-center gap-2 ml-auto">
-                    <div className="text-xs text-muted-foreground px-2 py-1 bg-secondary rounded-md">
-                      Generated mind map for:
-                    </div>
-                    <motion.div
-                      animate={{ rotate: isReasoningExpanded ? 180 : 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    </motion.div>
-                  </div>
-                </CardTitle>
-                
-                {/* Topic Preview */}
-                 <div className="mt-2 text-sm font-medium text-foreground">
-                   {topic || "Mind Map Generation"}
-                 </div>
-                
-                {/* Collapsed State Preview */}
-                {!isReasoningExpanded && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-2 text-xs text-muted-foreground"
-                  >
-                    ••• Click to see how I built this map
-                  </motion.div>
-                )}
-              </CardHeader>
-              
-              <AnimatePresence>
-                {isReasoningExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <CardContent className="pt-0 pb-4">
-                      {/* Key Insights Section */}
-                      <div className="mb-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-1 h-4 bg-primary rounded-full"></div>
-                          <span className="text-sm font-medium text-foreground">Key Insights</span>
-                        </div>
-                        <div className="space-y-2 text-xs text-muted-foreground">
-                          <div className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
-                            <span>Started with core LLM concepts to build a strong foundation</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
-                            <span>Connected technical details to real-world applications</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
-                            <span>Emphasized practical implementation over pure theory</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
-                            <span>Included ethical considerations for responsible AI development</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Detailed Reasoning */}
-                      <div className="border-t border-border/50 pt-4">
-                        <div className="max-h-48 overflow-y-auto">
-                          <div className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed bg-muted/30 rounded-md p-3">
-                            {reasoningContent}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Footer */}
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/30">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <motion.div
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="w-1.5 h-1.5 bg-green-500 rounded-full"
-                          />
-                          <span>Generated in 2.1s</span>
-                        </div>
-                        <div className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md font-medium">
-                          High confidence
-                        </div>
-                      </div>
-                    </CardContent>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </Card>
           </motion.div>
         )}
       </AnimatePresence>
