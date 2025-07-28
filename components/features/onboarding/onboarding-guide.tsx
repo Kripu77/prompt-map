@@ -61,6 +61,14 @@ const ONBOARDING_STEPS = [
     icon: <Info className="h-5 w-5" />,
   },
   {
+    id: 'ai-reasoning',
+    title: 'AI Reasoning View',
+    description: 'Click this brain icon to see how our AI thinks and reasons while creating your mindmap. Watch the live thought process and understand the logic behind each decision.',
+    position: 'bottom',
+    targetSelector: 'button[title="Toggle AI Reasoning Panel"]',
+    icon: <HelpCircle className="h-5 w-5" />,
+  },
+  {
     id: 'export-option',
     title: 'Export Your Mindmap',
     description: 'After generating a mindmap, you can export it as an image to share or save for later reference.',
@@ -113,7 +121,7 @@ interface OnboardingGuideProps {
   userId?: string // Can be passed when user authentication is implemented
 }
 
-export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuideProps) {
+export function OnboardingGuide({ userId }: OnboardingGuideProps) {
   // Local state
   const [onboardingState, setOnboardingState] = useState<OnboardingState>(defaultOnboardingState);
   const [isStateLoading, setIsStateLoading] = useState(true);
@@ -144,10 +152,17 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
           const response = await fetch('/api/user/onboarding');
           
           if (response.ok) {
-            const data = await response.json();
+            const result = await response.json();
+            const data = result.success ? result.data : result;
             setOnboardingState(data);
           } else {
             // If API request fails, fall back to localStorage
+            if (response.status === 429) {
+              console.warn('Rate limit exceeded for onboarding API, using localStorage');
+            } else {
+              console.error('Failed to load onboarding state from API:', response.status, response.statusText);
+            }
+            
             const localData = localStorage.getItem('onboarding-state');
             if (localData) {
               setOnboardingState(JSON.parse(localData));
@@ -162,6 +177,15 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
         }
       } catch (error) {
         console.error('Failed to load onboarding state:', error);
+        // Always try to fall back to localStorage
+        try {
+          const localData = localStorage.getItem('onboarding-state');
+          if (localData) {
+            setOnboardingState(JSON.parse(localData));
+          }
+        } catch (localStorageError) {
+          console.error('Failed to load from localStorage:', localStorageError);
+        }
       } finally {
         setIsStateLoading(false);
       }
@@ -178,19 +202,41 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
     try {
       if (userId) {
         // Signed-in user: save to database
-        await fetch('/api/user/onboarding', {
+        // Transform the state to match API expectations
+        const apiPayload = {
+          step: newState.lastCompletedStep,
+          completedSteps: newState.completedSteps,
+          isCompleted: newState.hasCompletedOnboarding || false,
+        };
+        
+        const response = await fetch('/api/user/onboarding', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(newState),
+          body: JSON.stringify(apiPayload),
         });
+        
+        // If we get a rate limit error, still save to localStorage
+        if (!response.ok) {
+          if (response.status === 429) {
+            console.warn('Rate limit exceeded for onboarding API, falling back to localStorage');
+          } else {
+            console.error('Failed to save onboarding state to API:', response.status, response.statusText);
+          }
+        }
       }
       
       // Always save to localStorage as fallback
       localStorage.setItem('onboarding-state', JSON.stringify(newState));
     } catch (error) {
       console.error('Failed to save onboarding state:', error);
+      // Ensure localStorage is still updated even if API fails
+      try {
+        localStorage.setItem('onboarding-state', JSON.stringify(newState));
+      } catch (localStorageError) {
+        console.error('Failed to save to localStorage:', localStorageError);
+      }
     }
   }, [userId]);
   
@@ -243,12 +289,10 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
   useEffect(() => {
     if (isStateLoading) return;
     
-    // Only show the guide if first visit and hasn't completed onboarding,
-    // or if they've explicitly restarted
-    const shouldShowGuide = 
-      (isFirstVisit && !onboardingState.hasCompletedOnboarding) ||
-      (onboardingState.hasCompletedOnboarding === false && 
-       (onboardingState.lastCompletedStep || -1) >= 0);
+    // Only show the guide if user hasn't completed onboarding
+    // Check explicitly for hasCompletedOnboarding being false or undefined
+    const hasCompleted = onboardingState.hasCompletedOnboarding === true;
+    const shouldShowGuide = !hasCompleted;
     
     setIsGuideActive(shouldShowGuide);
     
@@ -256,7 +300,7 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
     if (shouldShowGuide && (onboardingState.lastCompletedStep || -1) >= 0) {
       setCurrentStep(Math.min((onboardingState.lastCompletedStep || -1) + 1, ONBOARDING_STEPS.length - 1));
     }
-  }, [isStateLoading, isFirstVisit, onboardingState]);
+  }, [isStateLoading, onboardingState]);
 
   // Update isMobile state based on window size
   useEffect(() => {
@@ -771,4 +815,4 @@ export function OnboardingGuide({ isFirstVisit = true, userId }: OnboardingGuide
       </AnimatePresence>
     </>
   )
-} 
+}

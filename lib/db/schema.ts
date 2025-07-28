@@ -71,6 +71,7 @@ export const conversations = pgTable("conversation", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   content: json("content"),
+  reasoning: text("reasoning"), // Store AI reasoning/thinking process
 });
 
 // For storing user onboarding state
@@ -117,4 +118,4 @@ export const userOnboardingRelations = relations(userOnboarding, ({ one }) => ({
     fields: [userOnboarding.userId],
     references: [users.id],
   }),
-})); 
+}));

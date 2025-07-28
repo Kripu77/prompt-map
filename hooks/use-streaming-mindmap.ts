@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
+import { useReasoningPanelStore } from '@/lib/stores/reasoning-panel-store';
 import { useThreads } from '@/hooks/use-threads';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -34,6 +35,13 @@ export type UseStreamingMindmapReturn = StreamingMindmapState & StreamingMindmap
 
 export function useStreamingMindmap(): UseStreamingMindmapReturn {
   const { setMindmapData, setIsLoading: setStoreLoading, setError: setStoreError } = useMindmapStore();
+  const { 
+    setReasoningContent, 
+    appendReasoningContent, 
+    setStreaming, 
+    setCurrentTopic, 
+    clearReasoning
+  } = useReasoningPanelStore();
   const { createThread, isAuthenticated } = useThreads();
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -123,6 +131,11 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       setReasoning('');
       setIsComplete(false);
       setProgress({ wordCount: 0, estimatedProgress: 0 });
+      
+      // Initialize reasoning panel
+      clearReasoning();
+      setCurrentTopic(prompt);
+      setStreaming(true);
 
       const response = await fetch('/api/mindmap/stream', {
         method: 'POST',
@@ -203,10 +216,12 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
                   const parsed = JSON.parse(reasoningData);
                   if (parsed && typeof parsed === 'string') {
                     setReasoning(prev => prev + parsed);
+                    appendReasoningContent(parsed); // Sync with reasoning panel
                   }
                 } catch (e) {
                   // If it's not JSON, treat as plain text
                   setReasoning(prev => prev + reasoningData);
+                  appendReasoningContent(reasoningData); // Sync with reasoning panel
                 }
               }
             }
@@ -218,12 +233,14 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
 
       // Mark as complete and handle post-completion tasks
       setIsComplete(true);
+      setStreaming(false); // Stop streaming in reasoning panel
       setMindmapData(accumulatedContent);
       await handleCompletionTasks(accumulatedContent, prompt);
 
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('Stream aborted');
+        setStreaming(false); // Stop streaming in reasoning panel
         return;
       }
       
@@ -236,12 +253,14 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       
       const errorMessage = error.message || 'An error occurred during streaming';
       setError(errorMessage);
+      setStreaming(false); // Stop streaming in reasoning panel
       toast.error(`Failed to generate mindmap: ${errorMessage}`);
     } finally {
       setIsLoading(false);
+      setStreaming(false); // Ensure streaming is stopped in reasoning panel
       abortControllerRef.current = null;
     }
-  }, [setMindmapData, handleCompletionTasks]);
+  }, [setMindmapData, handleCompletionTasks, clearReasoning, setCurrentTopic, setStreaming, appendReasoningContent]);
 
   const generateMindmap = useCallback(async (prompt: string, options?: MindmapGenerationOptions) => {
     await streamCompletion(prompt, options);
@@ -256,12 +275,14 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       abortControllerRef.current.abort();
     }
     
+    setStreaming(false); // Stop streaming in reasoning panel
+    
     // Save partial content if it exists
     if (completion) {
       setMindmapData(completion);
       toast.info('Generation stopped. Partial content saved.');
     }
-  }, [completion, setMindmapData]);
+  }, [completion, setMindmapData, setStreaming]);
 
   const resetStream = useCallback(() => {
     setCompletion('');
@@ -269,7 +290,11 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
     setIsComplete(false);
     setProgress({ wordCount: 0, estimatedProgress: 0 });
     setError(null);
-  }, []);
+    
+    // Clear reasoning panel data
+    clearReasoning();
+    setStreaming(false);
+  }, [clearReasoning, setStreaming]);
 
   return {
     // State

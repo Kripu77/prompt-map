@@ -15,6 +15,13 @@
       "when": 1742621502161,
       "tag": "0001_fantastic_nemesis",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1753673860797,
+      "tag": "0002_glamorous_silver_fox",
+      "breakpoints": true
     }
   ]
 }

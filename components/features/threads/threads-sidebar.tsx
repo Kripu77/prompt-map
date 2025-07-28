@@ -14,9 +14,11 @@ import {
   Clock,
   Search,
   ChevronDown,
+  Brain,
 } from "lucide-react";
 import { formatDistanceToNow, isToday, isYesterday, differenceInDays, differenceInMinutes, differenceInHours } from "date-fns";
 import { useMindmapStore } from "@/lib/stores/mindmap-store";
+import { useReasoningPanelStore } from "@/lib/stores/reasoning-panel-store";
 import { useSidebarStore } from "@/lib/stores/sidebar-store";
 import { usePathname } from "next/navigation";
 import { Input } from "../../ui/input";
@@ -71,6 +73,7 @@ export function ThreadsSidebar() {
   const { threads, isLoading, selectedThread, loadThread, deleteThread, fetchThreads } = useThreads();
   const { isOpen, setIsOpen } = useSidebarStore();
   const { mindmapData, setMindmapData, setPrompt, setIsLoading, setError } = useMindmapStore();
+  const { setReasoningContent, showForSavedThread } = useReasoningPanelStore();
   const { status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const pathname = usePathname();
@@ -262,6 +265,14 @@ export function ThreadsSidebar() {
         setError(null);
         setIsOpen(false);
         
+        // Restore reasoning data if available
+        if (loadedThread.reasoning) {
+          setReasoningContent(loadedThread.reasoning);
+          showForSavedThread();
+        } else {
+          setReasoningContent('');
+        }
+        
         console.log('Thread loaded successfully:', loadedThread.title);
       }
     } catch (error) {
@@ -297,14 +308,29 @@ export function ThreadsSidebar() {
     <div
       key={thread.id}
       className={cn(
-        "w-full py-2 px-3 text-left hover:bg-muted/50 cursor-pointer group transition-colors",
+        "w-full py-2 px-3 text-left hover:bg-muted/50 cursor-pointer group transition-colors relative",
         selectedThread?.id === thread.id && "bg-muted/30"
       )}
       onClick={() => handleThreadClick(thread)}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <h3 className="text-sm font-normal line-clamp-1">{thread.title}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-normal line-clamp-1 flex-1">{thread.title}</h3>
+            {thread.reasoning && (
+              <div className="relative group/tooltip">
+                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 border border-primary/20 animate-pulse hover:animate-none transition-all duration-300 hover:bg-primary/20 hover:scale-110">
+                  <Brain className="h-3 w-3 text-primary" />
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-popover border border-border rounded-md shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
+                  <div className="text-xs font-medium text-popover-foreground">
+                    💭 View AI Thinking
+                  </div>
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-border"></div>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex items-center text-xs text-muted-foreground/80 mt-0.5">
             <Clock className="mr-1 h-3 w-3 inline" />
             {formatTime(new Date(thread.updatedAt))}

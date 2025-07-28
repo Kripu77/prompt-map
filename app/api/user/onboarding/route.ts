@@ -11,8 +11,13 @@ import {
   OnboardingUpdateSchema,
 } from '@/lib/api/middleware/validation';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const clientId = getClientIdentifier(request);
+    if (!checkRateLimit(clientId, 100, 60000)) {
+      return createErrorResponse('Rate limit exceeded', 429, 'RATE_LIMIT_EXCEEDED');
+    }
+
     const { error, userId } = await requireAuth();
     if (error) return error;
 
@@ -27,7 +32,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const clientId = getClientIdentifier(request);
-    if (!checkRateLimit(clientId, 10, 60000)) {
+    if (!checkRateLimit(clientId, 400, 60000)) {
       return createErrorResponse('Rate limit exceeded', 429, 'RATE_LIMIT_EXCEEDED');
     }
 
@@ -45,4 +50,4 @@ export async function POST(request: NextRequest) {
     console.error('Error updating onboarding state:', error);
     return createErrorResponse('Failed to update onboarding state', 500, 'UPDATE_FAILED');
   }
-} 
+}
