@@ -5,9 +5,36 @@ import { createSystemMessage, createUserMessage, createAssistantMessage } from "
 
 // SYSTEM PROMPTS
 
-export const MINDMAP_SYSTEM_PROMPT = `<role>
+// SYSTEM PROMPTS
+
+export function getMindmapSystemPrompt(): string {
+  const now = new Date();
+  const currentDateTime = now.toLocaleString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    timeZoneName: 'short' 
+  });
+  const currentDate = now.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  const currentYear = now.getFullYear();
+
+  return `<role>
 You are an expert knowledge organizer and mindmap specialist. Your role is to transform complex information into clear, hierarchical mindmaps using markdown format.
 </role>
+
+<current_context>
+Current date and time: ${currentDateTime}
+Today is: ${currentDate}
+Current year: ${currentYear}
+</current_context>
 
 <expertise>
 - Information architecture and knowledge organization
@@ -67,44 +94,50 @@ You have access to a **web search tool** that can search the internet for curren
 - Clear, jargon-free language
 - Current and verified information when applicable
 </quality_standards>`;
+}
 
-export const TOPIC_SHIFT_SYSTEM_PROMPT = `<role>
-You are an expert topic analysis specialist. Your role is to determine whether a follow-up question represents a significant topic shift that would require a new mindmap.
+function getTopicShiftSystemPrompt(): string {
+  return `<role>
+You are an expert at analyzing whether a follow-up question represents a topic shift that requires a new mindmap or can be integrated into the existing one.
 </role>
 
-<expertise>
-- Semantic analysis and topic modeling
-- Context understanding and relevance assessment
-- Educational content continuity
-</expertise>
-
-<analysis_framework>
-1. **Topic Coherence**: Does the question relate to the current subject?
-2. **Scope Alignment**: Would the answer fit within the existing mindmap structure?
-3. **Conceptual Distance**: How far is the new topic from the current one?
-4. **Integration Potential**: Can the new information enhance the existing mindmap?
-</analysis_framework>
-
 <decision_criteria>
-- **NOT a topic shift**: Question expands, clarifies, or relates to current topic
-- **IS a topic shift**: Question introduces completely unrelated subject matter
+A topic shift occurs when:
+1. **Semantic Distance**: The follow-up is conceptually unrelated to the current topic
+2. **Scope Mismatch**: The question falls outside the reasonable scope of the current mindmap
+3. **Integration Difficulty**: Adding this content would make the mindmap unfocused or confusing
+4. **User Intent**: The user appears to be asking about a completely different subject
+
+NOT a topic shift when:
+1. **Natural Extension**: The question explores a related aspect or deeper detail
+2. **Practical Application**: Asking about implementation or examples of the current topic
+3. **Clarification**: Seeking more information about existing mindmap content
+4. **Related Concepts**: Exploring connected ideas within the same domain
 </decision_criteria>
 
 <response_format>
-Always respond with valid JSON only:
+Respond with a JSON object:
 {
   "isTopicShift": boolean,
   "confidence": number (0-1),
-  "reasoning": "brief explanation",
-  "recommendation": "suggested action"
+  "reasoning": "Brief explanation of the decision",
+  "suggestedAction": "integrate" | "new_mindmap"
 }
-</response_format>`;
+</response_format>
+
+<examples>
+Current: "Machine Learning Basics" + Follow-up: "What about neural networks?" → NOT a shift (related concept)
+Current: "Machine Learning Basics" + Follow-up: "How to cook pasta?" → IS a shift (completely unrelated)
+Current: "Project Management" + Follow-up: "What about agile methodologies?" → NOT a shift (related methodology)
+Current: "Project Management" + Follow-up: "Best vacation destinations?" → IS a shift (unrelated topic)
+</examples>`;
+}
 
 // MINDMAP GENERATION PROMPTS
 
 export function createInitialMindmapPrompt(topic: string): CoreMessage[] {
   return [
-    createSystemMessage(MINDMAP_SYSTEM_PROMPT),
+    createSystemMessage(getMindmapSystemPrompt()),
     createUserMessage(`<task>
 Create a comprehensive mindmap for: "${topic}"
 </task>
@@ -176,7 +209,7 @@ export function createFollowUpMindmapPrompt(
   previousPrompts: string[]
 ): CoreMessage[] {
   return [
-    createSystemMessage(MINDMAP_SYSTEM_PROMPT),
+    createSystemMessage(getMindmapSystemPrompt()),
     createUserMessage(`<context>
 You previously created this mindmap for "${originalPrompt}":
 
@@ -225,7 +258,7 @@ export function createTopicShiftPrompt(
   followUpQuestion: string
 ): CoreMessage[] {
   return [
-    createSystemMessage(TOPIC_SHIFT_SYSTEM_PROMPT),
+    createSystemMessage(getTopicShiftSystemPrompt()),
     createUserMessage(`<analysis_task>
 Analyze this follow-up question for topic shift:
 
@@ -253,6 +286,50 @@ Examples for reference:
 
 <important>
 Provide your analysis in the required JSON format.
+</important>`),
+  ];
+}
+
+export function createNewTopicMindmapPrompt(
+  originalTopic: string,
+  newQuestion: string
+): CoreMessage[] {
+  return [
+    createSystemMessage(getMindmapSystemPrompt()),
+    createUserMessage(`<task>
+Create a comprehensive mindmap for: "${newQuestion}"
+</task>
+
+<context>
+This is a new topic, different from the previous topic: "${originalTopic}"
+</context>
+
+<thinking_process>
+Follow this thinking process for the new topic:
+
+1. **Topic Analysis**: What are the core aspects of this new topic?
+2. **Currency Assessment**: Apply the decision framework:
+   - 🔍 Does this topic contain [CURRENT_INFO_REQUIRED] indicators?
+   - 🧠 Is this primarily [STATIC_KNOWLEDGE] that doesn't change?
+   - Decision: Use web search if [CURRENT_INFO_REQUIRED] is identified
+3. **Information Gathering**: Execute web search if needed, then combine with knowledge
+4. **Audience Consideration**: What would someone learning this topic need to know?
+5. **Structure Planning**: How can I organize this information hierarchically?
+6. **Content Selection**: What are the most important points to include?
+</thinking_process>
+
+<requirements>
+Generate a well-structured mindmap that covers:
+- Fundamental concepts and definitions
+- Key components or categories
+- Practical applications or examples
+- Important considerations or best practices
+- Related concepts or connections
+- Current trends and developments (use web search if needed)
+</requirements>
+
+<important>
+Create a title that clearly describes the topic, not generic phrases like "Mind Map" or "Overview".
 </important>`),
   ];
 }

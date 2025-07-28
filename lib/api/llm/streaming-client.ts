@@ -43,6 +43,13 @@ class StreamingLLMClient {
     const config = { ...DEFAULT_STREAMING_CONFIG, ...request.config };
 
     try {
+      console.log('StreamingLLMClient: Starting stream with config:', {
+        model: config.model,
+        includeReasoning: config.includeReasoning,
+        temperature: config.temperature,
+        maxTokens: config.maxTokens
+      });
+
       const result = await streamText({
         model: this.client(config.model),
         messages: request.messages,
@@ -66,6 +73,7 @@ class StreamingLLMClient {
         },
       });
 
+      console.log('StreamingLLMClient: Stream created successfully');
       return result;
     } catch (error) {
       console.error('StreamingLLMClient error:', error);

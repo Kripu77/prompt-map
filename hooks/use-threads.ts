@@ -95,10 +95,23 @@ export function useThreads() {
       return null;
     }
 
+    console.log('createThread called with:', {
+      title,
+      contentLength: content?.length || 0,
+      reasoningLength: reasoning?.length || 0,
+      hasReasoning: !!reasoning,
+      reasoningPreview: reasoning ? reasoning.substring(0, 100) + '...' : 'No reasoning'
+    });
+
     try {
       const result = await createThreadMutation.mutateAsync({ title, content, reasoning });
+      console.log('Thread created successfully:', {
+        threadId: result.thread.id,
+        hasReasoningInResult: !!result.thread.reasoning
+      });
       return result.thread;
     } catch (err) {
+      console.error('Error in createThread:', err);
       return null;
     }
   }, [isAuthenticated]);

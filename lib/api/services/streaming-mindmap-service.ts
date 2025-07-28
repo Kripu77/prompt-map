@@ -1,5 +1,4 @@
 import { streamingLLMClient } from '../llm/streaming-client';
-import { webSearchTool } from '../../tools/web-search-tool';
 import {
   createInitialMindmapPrompt,
   createFollowUpMindmapPrompt,
@@ -15,8 +14,7 @@ export class StreamingMindmapService {
     options: MindmapGenerationOptions & { enableWebSearch?: boolean } = {}
   ) {
     try {
-      // Enable web search by default since we've added it to the system prompts
-      const enableWebSearch = options.enableWebSearch !== false;
+      const enableWebSearch = false;
       
       let messages;
       
@@ -41,20 +39,33 @@ export class StreamingMindmapService {
         messages = createInitialMindmapPrompt(enhancedPrompt);
       }
       
-      // Prepare tools if web search is enabled
-      const tools = enableWebSearch ? {
-        'search.web': webSearchTool
-      } : undefined;
       
       const result = await streamingLLMClient.streamText({
         messages,
         config: {
           temperature: 0.7,
           maxTokens: 1200,
-          tools,
+          includeReasoning: true,
+          tools: enableWebSearch ? {
+            web_search: {
+              description: 'Search the web for current information',
+              parameters: {
+                type: 'object',
+                properties: {
+                  query: {
+                    type: 'string',
+                    description: 'The search query'
+                  }
+                },
+                required: ['query']
+              },
+              execute: async ({ query }: { query: string }) => {
+                return `Search results for: ${query}`;
+              }
+            }
+          } : undefined,
         }
       });
-      
       return result;
     } catch (error) {
       throw this.handleServiceError(error, 'streaming_mindmap_generation_failed');

@@ -90,8 +90,15 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
     });
   }, [isAuthenticated, status, router]);
 
-  const handleCompletionTasks = useCallback(async (completedContent: string, currentPrompt: string) => {
+  const handleCompletionTasks = useCallback(async (completedContent: string, currentPrompt: string, reasoningData?: string) => {
     try {
+      console.log('handleCompletionTasks called with:', {
+        contentLength: completedContent?.length || 0,
+        promptLength: currentPrompt?.length || 0,
+        reasoningLength: reasoningData?.length || 0,
+        hasReasoning: !!reasoningData
+      });
+      
       // Handle analytics and notifications for non-authenticated users
       if (!isAuthenticated && completedContent && completedContent.trim()) {
         const title = extractMindmapTitle(completedContent) || currentPrompt;
@@ -103,7 +110,12 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       if (isAuthenticated && completedContent && completedContent.trim()) {
         try {
           const title = extractMindmapTitle(completedContent) || currentPrompt;
-          await createThread(title, completedContent);
+          console.log('Creating thread with reasoning data:', {
+            title,
+            contentLength: completedContent.length,
+            reasoningLength: reasoningData?.length || 0
+          });
+          await createThread(title, completedContent, reasoningData);
           toast.success('Mindmap saved successfully!');
         } catch (error) {
           console.error('Error auto-saving mindmap:', error);
@@ -128,7 +140,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       setIsLoading(true);
       setError(null);
       setCompletion('');
-      setReasoning('');
+      setReasoning(''); // Clear previous reasoning content
       setIsComplete(false);
       setProgress({ wordCount: 0, estimatedProgress: 0 });
       
@@ -170,6 +182,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
 
       const decoder = new TextDecoder();
       let accumulatedContent = '';
+      let accumulatedReasoning = ''; // Track reasoning separately
 
       try {
         while (true) {
@@ -215,12 +228,14 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
                 try {
                   const parsed = JSON.parse(reasoningData);
                   if (parsed && typeof parsed === 'string') {
-                    setReasoning(prev => prev + parsed);
+                    accumulatedReasoning += parsed;
+                    setReasoning(accumulatedReasoning);
                     appendReasoningContent(parsed); // Sync with reasoning panel
                   }
                 } catch (e) {
                   // If it's not JSON, treat as plain text
-                  setReasoning(prev => prev + reasoningData);
+                  accumulatedReasoning += reasoningData;
+                  setReasoning(accumulatedReasoning);
                   appendReasoningContent(reasoningData); // Sync with reasoning panel
                 }
               }
@@ -235,7 +250,9 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       setIsComplete(true);
       setStreaming(false); // Stop streaming in reasoning panel
       setMindmapData(accumulatedContent);
-      await handleCompletionTasks(accumulatedContent, prompt);
+      
+      // Use the accumulated reasoning content
+      await handleCompletionTasks(accumulatedContent, prompt, accumulatedReasoning);
 
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -286,7 +303,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
 
   const resetStream = useCallback(() => {
     setCompletion('');
-    setReasoning('');
+    setReasoning(''); // Clear local reasoning state
     setIsComplete(false);
     setProgress({ wordCount: 0, estimatedProgress: 0 });
     setError(null);
