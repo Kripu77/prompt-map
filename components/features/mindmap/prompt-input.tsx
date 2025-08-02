@@ -3,9 +3,11 @@
 import { useState, useRef, KeyboardEvent } from "react";
 import { Textarea } from "../../ui/textarea";
 import { Button } from "../../ui/button";
-import { Loader2, ArrowRightCircle, CornerDownLeft } from "lucide-react";
+import { Loader2, ArrowRightCircle, CornerDownLeft, Brain, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../ui/dropdown-menu";
+import type { MindmapMode } from "@/lib/api/llm/prompts/mindmap-prompts";
 
 interface PromptInputProps {
   onSubmit: (value: string) => void;
@@ -14,6 +16,8 @@ interface PromptInputProps {
   isFollowUpMode?: boolean;
   placeholder?: string;
   disabled?: boolean;
+  mode?: MindmapMode;
+  onModeChange?: (mode: MindmapMode) => void;
 }
 
 export function PromptInput({ 
@@ -22,7 +26,9 @@ export function PromptInput({
   error = null, 
   isFollowUpMode = false,
   placeholder = "Enter a prompt...",
-  disabled = false
+  disabled = false,
+  mode = 'comprehensive',
+  onModeChange
 }: PromptInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,6 +48,12 @@ export function PromptInput({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
+    }
+  };
+
+  const handleModeSelect = (newMode: MindmapMode) => {
+    if (onModeChange) {
+      onModeChange(newMode);
     }
   };
 
@@ -69,6 +81,61 @@ export function PromptInput({
             <span>Follow-up prompt</span>
           </span>
         )}
+
+        {/* Mode Selector Dropdown */}
+        <div className="flex items-center pl-2 pr-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-8 px-2 text-xs font-medium rounded-lg border transition-all duration-200",
+                  "hover:bg-background/80 focus:ring-1 focus:ring-primary/30",
+                  mode === 'comprehensive' 
+                    ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/15" 
+                    : "bg-muted/50 text-muted-foreground border-muted/30 hover:bg-muted/70"
+                )}
+                disabled={loading || disabled}
+              >
+                <Brain className="h-3 w-3 mr-1" />
+                <span>{mode === 'comprehensive' ? 'Comprehensive' : 'Lite'}</span>
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuItem 
+                onClick={() => handleModeSelect('comprehensive')}
+                className={cn(
+                  "cursor-pointer",
+                  mode === 'comprehensive' && "bg-primary/10 text-primary"
+                )}
+              >
+                <Brain className="h-4 w-4 mr-2" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Comprehensive</span>
+                  <span className="text-xs text-muted-foreground">Detailed analysis</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleModeSelect('lite')}
+                className={cn(
+                  "cursor-pointer",
+                  mode === 'lite' && "bg-primary/10 text-primary"
+                )}
+              >
+                <Brain className="h-4 w-4 mr-2" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Lite</span>
+                  <span className="text-xs text-muted-foreground">Quick overview</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Separator */}
+        <div className="w-px h-6 bg-border/50 mx-2" />
 
         <Textarea
           ref={textareaRef}

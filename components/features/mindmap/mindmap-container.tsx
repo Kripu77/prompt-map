@@ -11,9 +11,12 @@ import { Button } from '@/components/ui/button';
 import { LoaderCircle, Sparkles, CornerDownLeft, AlertCircle, Zap, Clock } from 'lucide-react';
 import { generateTitleFromPrompt } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useUserSettings } from '@/hooks/use-user-settings';
+import type { MindmapMode } from '@/lib/api/llm/prompts/mindmap-prompts';
 
 export function MindmapContainer() {
   const { mindmapData, isLoading: storeLoading } = useMindmapStore();
+  const { settings, setMindmapMode } = useUserSettings();
   const {
     streamingContent,
     isStreaming,
@@ -114,6 +117,15 @@ export function MindmapContainer() {
   const handleSavePartial = () => {
     if (streamingContent) {
       toast.success('Partial mindmap saved!');
+    }
+  };
+
+  const handleModeChange = async (newMode: MindmapMode) => {
+    try {
+      await setMindmapMode(newMode);
+      toast.success(`✨ Switched to ${newMode} mode`);
+    } catch (error) {
+      toast.error('Failed to update mindmap mode');
     }
   };
 
@@ -304,6 +316,8 @@ export function MindmapContainer() {
           loading={isGenerating || topicShiftDetected}
           error={error}
           isFollowUpMode={isFollowUpMode}
+          mode={settings?.mindmapMode || 'comprehensive'}
+          onModeChange={handleModeChange}
           placeholder={
             isFollowUpMode 
               ? "Ask a follow-up question to refine the mindmap..." 

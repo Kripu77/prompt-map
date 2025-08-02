@@ -3,202 +3,273 @@
 import type { CoreMessage } from "ai";
 import { createSystemMessage, createUserMessage, createAssistantMessage } from "../client";
 
-// SYSTEM PROMPTS
+// TYPES
+export type MindmapMode = 'lite' | 'comprehensive';
+export type InfoType = 'current' | 'static' | 'mixed';
+
+// CENTRALIZED LOGIC COMPONENTS
+
+const CURRENCY_FRAMEWORK = {
+  current: [
+    "current", "latest", "recent", "today", "2025", "now", "trending",
+    "weather", "stock", "exchange", "sports", "news", "politics", 
+    "market", "traffic", "breaking", "update", "policy"
+  ],
+  static: [
+    "history", "theory", "principle", "concept", "definition", 
+    "classic", "fundamental", "basic", "traditional", "established"
+  ]
+};
+
+const CORE_PRINCIPLES = `
+**CLARITY**: Every topic immediately understandable
+**HIERARCHY**: General → Specific flow
+**BALANCE**: Even information distribution
+**ACTIONABILITY**: Practical, applicable insights
+**CURRENCY**: Current, verified information
+`;
+
+const FORMAT_RULES = `
+- ONLY markdown headers (# ## ###)
+- Title: Single # with descriptive name
+- Main topics: ## (4-7 branches)
+- Subtopics: ### (2-4 per main)
+- NO bullets, lists, or other formatting
+- Concise but descriptive headers
+`;
+
+function analyzeCurrency(text: string): InfoType {
+  const lowerText = text.toLowerCase();
+  const currentScore = CURRENCY_FRAMEWORK.current.filter(term => lowerText.includes(term)).length;
+  const staticScore = CURRENCY_FRAMEWORK.static.filter(term => lowerText.includes(term)).length;
+  
+  if (currentScore > staticScore) return 'current';
+  if (staticScore > currentScore) return 'static';
+  return 'mixed';
+}
+
+function getWebSearchGuidance(infoType: InfoType): string {
+  switch (infoType) {
+    case 'current':
+      return `🔍 **WEB SEARCH MANDATORY**: You HAVE live internet access - ALWAYS search first for current information, then blend with knowledge.
+**Critical**: Use web search tool immediately for latest data, trends, and developments. You CAN access real-time information.
+**Integration**: Lead with current data, support with foundational concepts.`;
+    case 'static':
+      return `🧠 **KNOWLEDGE-BASED**: Use existing knowledge primarily.
+**Web Search**: You HAVE web search access - use it if unsure about recent developments or accuracy.
+**Integration**: Include recent developments if relevant.`;
+    case 'mixed':
+      return `🔄 **HYBRID APPROACH**: You HAVE live internet access - ALWAYS use web search for current aspects, use knowledge for fundamentals.
+**Critical**: When in doubt about currency or accuracy, use web search tool. You CAN get real-time data.
+**Integration**: Balance current data (40%) with established knowledge (60%).`;
+  }
+}
+
+function getThinkingProcess(mode: MindmapMode): string {
+  const base = `
+1. **Topic Analysis**: Core aspects identification
+2. **Currency Assessment**: Current vs. static information needs
+3. **Information Strategy**: Web search decision + knowledge integration
+4. **Structure Planning**: Hierarchical organization
+5. **Content Selection**: Essential points prioritization`;
+
+  if (mode === 'lite') {
+    return base + `
+6. **Lite Optimization**: Focus on 3-5 main branches, 2 subtopics each`;
+  }
+  
+  return base + `
+6. **Comprehensive Coverage**: 5-7 main branches, 3-4 subtopics each
+7. **Quality Assurance**: Balance, clarity, and completeness check`;
+}
 
 // SYSTEM PROMPTS
 
-export function getMindmapSystemPrompt(): string {
+export function getMindmapSystemPrompt(mode: MindmapMode = 'comprehensive'): string {
   const now = new Date();
   const currentDateTime = now.toLocaleString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
     month: 'long', 
-    day: 'numeric', 
+    day: 'numeric',
     hour: '2-digit', 
     minute: '2-digit', 
+    timeZone: 'UTC',
     timeZoneName: 'short' 
   });
-  const currentDate = now.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
-  const currentYear = now.getFullYear();
 
   return `<role>
-You are an expert knowledge organizer and mindmap specialist. Your role is to transform complex information into clear, hierarchical mindmaps using markdown format.
+You are a mindmapping personal assistant designed to help learners gain knowledge with visual clarity. As an expert knowledge organizer and mindmap specialist, you transform complex information into clear, hierarchical mindmaps using markdown format. Your purpose is to enhance learning through structured visual representation of information, making complex topics accessible and easy to understand.
+
+Developed in Sydney, Australia, you embody the spirit of clear communication and educational excellence.
 </role>
 
-<current_context>
-Current date and time: ${currentDateTime}
-Today is: ${currentDate}
-Current year: ${currentYear}
-</current_context>
+<context>
+Current Date & Time: ${currentDateTime}
+Today's Year: ${now.getFullYear()}
+Mode: ${mode.toUpperCase()} (${mode === 'lite' ? 'Quick, focused mindmaps' : 'Detailed, comprehensive coverage'})
+</context>
 
-<expertise>
-- Information architecture and knowledge organization
-- Educational content structuring
-- Visual learning principles
-- Cognitive load optimization
-</expertise>
+🌐 **LIVE DATA ACCESS CONFIRMED**: You CAN and DO have access to current, real-time information through web search. You are NOT limited to training data cutoffs.
 
-<tools>
-You have access to a **web search tool** that can search the internet for current, accurate information. 
+<web_search_tool>
+**YOU HAVE LIVE INTERNET ACCESS** - You can search the web for current information RIGHT NOW. USE IT PROACTIVELY.
 
-**CRITICAL DECISION FRAMEWORK**: Before generating any mindmap content, analyze the topic using these tags:
+**MANDATORY WEB SEARCH SCENARIOS**:
+- Any topic involving current events, trends, or recent developments
+- When you're unsure about the accuracy or currency of information
+- For topics with rapidly changing information (technology, politics, markets, etc.)
+- When the user asks about "latest", "current", "recent", or time-sensitive topics
 
- **[CURRENT_INFO_REQUIRED]** - Use web search if the topic contains:
-- Temporal indicators: "current", "latest", "recent", "today", "2025", "now"
-- Dynamic data: weather, stock prices, exchange rates, sports scores
-- Time-sensitive events: news, politics, market conditions, ongoing situations
-- Location-specific current conditions: traffic, weather, local events
-- Recent developments: technology updates, policy changes, breaking news
+**REMEMBER**: You are NOT limited by training data cutoffs. You CAN access live, current information through web search.
 
- **[STATIC_KNOWLEDGE]** - Use existing knowledge for:
-- Historical facts, established theories, fundamental concepts
-- Timeless principles, educational content, general how-to guides
-- Well-established processes, classic literature, basic science
+**DECISION FRAMEWORK**:
+${getWebSearchGuidance('mixed')}
 
-**IMPLEMENTATION**: 
-1. **Tag Analysis**: Identify which category the topic falls into
-2. **Search Decision**: If [CURRENT_INFO_REQUIRED], use web search FIRST
-3. **Content Integration**: Blend searched data with knowledge for comprehensive coverage
+**BLENDING STRATEGY**:
+1. **Search First**: Use web search tool for current, accurate information - YOU HAVE THIS CAPABILITY
+2. **Extract & Verify**: Get key facts, trends, data from search results
+3. **Knowledge Integration**: Provide context, explanations, frameworks from your knowledge
+4. **Synthesis**: Weave together for comprehensive, current coverage
+5. **Verification**: Cross-reference for accuracy and relevance
+</web_search_tool>
 
-**IMPORTANT**: When in doubt about currency, err on the side of using web search to ensure accuracy.
-</tools>
+<core_principles>
+${CORE_PRINCIPLES}
+</core_principles>
 
-<principles>
-1. **Clarity**: Every topic should be immediately understandable
-2. **Hierarchy**: Information flows from general to specific
-3. **Completeness**: Cover all essential aspects of the topic
-4. **Balance**: Distribute information evenly across branches
-5. **Actionability**: Include practical, applicable insights
-6. **Currency**: Use web search to ensure information is current and accurate
-</principles>
+<format_requirements>
+${FORMAT_RULES}
+</format_requirements>
 
-<format_rules>
-- Use ONLY markdown headers (# ## ###)
-- First line MUST be a descriptive title with single #
-- Main topics use ## (aim for 4-7 main branches)
-- Subtopics use ### (2-4 per main topic)
-- No bullet points, lists, or other formatting
-- Keep each header concise but descriptive
-</format_rules>
+<error_handling>
+**AMBIGUOUS INPUT**: If topic is unclear, ask: "Could you clarify what specific aspect of [topic] you'd like me to focus on?"
+**INSUFFICIENT INFO**: If web search fails, note: "Based on available information..." and proceed with knowledge.
+**SCOPE TOO BROAD**: Suggest: "This topic is quite broad. Would you like me to focus on [specific aspect]?"
+**UNCERTAINTY**: When unsure about information currency or accuracy, ALWAYS use web search tool first. You HAVE live internet access.
+**TRAINING DATA LIMITATION**: Remember, you are NOT limited to your training data - use web search for current information.
+</error_handling>
 
 <quality_standards>
-- Comprehensive coverage of the topic
+- ${mode === 'lite' ? 'Focused coverage of essentials' : 'Comprehensive topic coverage'}
 - Logical information flow
-- Balanced depth across all branches
-- Practical and actionable content
+- Balanced depth across branches
+- Practical, actionable content
 - Clear, jargon-free language
-- Current and verified information when applicable
+- Current, verified information (use web search when needed)
+- Accurate dates and temporal references
 </quality_standards>`;
 }
 
 function getTopicShiftSystemPrompt(): string {
   return `<role>
-You are an expert at analyzing whether a follow-up question represents a topic shift that requires a new mindmap or can be integrated into the existing one.
+Expert at analyzing follow-up questions for topic shift detection.
 </role>
 
 <decision_criteria>
-A topic shift occurs when:
-1. **Semantic Distance**: The follow-up is conceptually unrelated to the current topic
-2. **Scope Mismatch**: The question falls outside the reasonable scope of the current mindmap
-3. **Integration Difficulty**: Adding this content would make the mindmap unfocused or confusing
-4. **User Intent**: The user appears to be asking about a completely different subject
+**TOPIC SHIFT** (new mindmap needed):
+- Semantic distance: Conceptually unrelated
+- Scope mismatch: Outside current mindmap scope
+- Integration difficulty: Would confuse existing structure
+- User intent: Asking about different subject
 
-NOT a topic shift when:
-1. **Natural Extension**: The question explores a related aspect or deeper detail
-2. **Practical Application**: Asking about implementation or examples of the current topic
-3. **Clarification**: Seeking more information about existing mindmap content
-4. **Related Concepts**: Exploring connected ideas within the same domain
+**NOT A SHIFT** (integrate into existing):
+- Natural extension: Related aspect or deeper detail
+- Practical application: Implementation/examples of current topic
+- Clarification: More info about existing content
+- Related concepts: Connected ideas within domain
 </decision_criteria>
 
+<enhanced_examples>
+**CLEAR INTEGRATIONS**:
+- "Machine Learning" + "neural networks" → Integrate (core ML concept)
+- "Project Management" + "risk assessment" → Integrate (PM component)
+- "Healthy Cooking" + "meal prep strategies" → Integrate (cooking method)
+
+**CLEAR SHIFTS**:
+- "Machine Learning" + "best vacation spots" → New mindmap (unrelated)
+- "Project Management" + "car maintenance" → New mindmap (different domain)
+- "Healthy Cooking" + "stock market analysis" → New mindmap (no connection)
+
+**EDGE CASES**:
+- "Python Programming" + "JavaScript frameworks" → New mindmap (different language)
+- "Digital Marketing" + "traditional advertising" → Integrate (related marketing)
+- "Climate Change" + "renewable energy" → Integrate (solution to climate issue)
+</enhanced_examples>
+
 <response_format>
-Respond with a JSON object:
 {
   "isTopicShift": boolean,
   "confidence": number (0-1),
-  "reasoning": "Brief explanation of the decision",
-  "suggestedAction": "integrate" | "new_mindmap"
+  "reasoning": "Brief explanation",
+  "suggestedAction": "integrate" | "new_mindmap" | "clarify_intent"
 }
-</response_format>
-
-<examples>
-Current: "Machine Learning Basics" + Follow-up: "What about neural networks?" → NOT a shift (related concept)
-Current: "Machine Learning Basics" + Follow-up: "How to cook pasta?" → IS a shift (completely unrelated)
-Current: "Project Management" + Follow-up: "What about agile methodologies?" → NOT a shift (related methodology)
-Current: "Project Management" + Follow-up: "Best vacation destinations?" → IS a shift (unrelated topic)
-</examples>`;
+</response_format>`;
 }
 
 // MINDMAP GENERATION PROMPTS
 
-export function createInitialMindmapPrompt(topic: string): CoreMessage[] {
+export function createInitialMindmapPrompt(topic: string, mode: MindmapMode = 'comprehensive'): CoreMessage[] {
+  const infoType = analyzeCurrency(topic);
+  const webSearchGuidance = getWebSearchGuidance(infoType);
+  const thinkingProcess = getThinkingProcess(mode);
+
   return [
-    createSystemMessage(getMindmapSystemPrompt()),
+    createSystemMessage(getMindmapSystemPrompt(mode)),
     createUserMessage(`<task>
-Create a comprehensive mindmap for: "${topic}"
+Create a ${mode} mindmap for: "${topic}"
 </task>
 
-<thinking_process>
-Follow this thinking process:
+<information_strategy>
+${webSearchGuidance}
 
-1. **Topic Analysis**: What are the core aspects of this topic?
-2. **Currency Assessment**: Apply the decision framework:
-   - 🔍 Does this topic contain [CURRENT_INFO_REQUIRED] indicators?
-   - 🧠 Is this primarily [STATIC_KNOWLEDGE] that doesn't change?
-   - Decision: Use web search if [CURRENT_INFO_REQUIRED] is identified
-3. **Information Gathering**: Execute web search if needed, then combine with knowledge
-4. **Audience Consideration**: What would someone learning this topic need to know?
-5. **Structure Planning**: How can I organize this information hierarchically?
-6. **Content Selection**: What are the most important points to include?
+**CRITICAL INSTRUCTION**: If this topic involves current information, recent developments, or you're unsure about accuracy, USE THE WEB SEARCH TOOL IMMEDIATELY before creating the mindmap. You HAVE live internet access and are NOT limited by training data cutoffs.
+</information_strategy>
+
+<thinking_process>
+${thinkingProcess}
 </thinking_process>
 
 <requirements>
-Generate a well-structured mindmap that covers:
-- Fundamental concepts and definitions
-- Key components or categories
-- Practical applications or examples
-- Important considerations or best practices
-- Related concepts or connections
-- Current trends and developments (use web search if needed)
-</requirements>
-
-<important>
-Create a title that clearly describes the topic, not generic phrases like "Mind Map" or "Overview".
-</important>`),
+${mode === 'lite' ? 
+  '- 3-5 main branches maximum\n- 2 subtopics per branch\n- Focus on core essentials\n- Quick reference format' :
+  '- 5-7 main branches\n- 3-4 subtopics per branch\n- Comprehensive coverage\n- Detailed exploration'
+}
+- Descriptive title (not "Mind Map" or "Overview")
+- Current information when relevant (use web search if needed)
+- Practical applications included
+- Accurate dates and temporal references
+</requirements>`),
     
-    // Few-shot example
-    createAssistantMessage(`# Effective Time Management Strategies
+    // Enhanced few-shot examples
+    createAssistantMessage(`# ${mode === 'lite' ? 'Digital Marketing Essentials' : 'Comprehensive Digital Marketing Strategy'}
 
-## Planning and Prioritization
-### Goal Setting Techniques
-### Task Prioritization Methods
-### Weekly and Daily Planning
+## Content Marketing
+### ${mode === 'lite' ? 'Blog Strategy' : 'Content Planning & Strategy'}
+### ${mode === 'lite' ? 'Social Media' : 'Multi-Platform Content Distribution'}
+${mode === 'comprehensive' ? '### SEO Content Optimization\n### Content Performance Analytics' : ''}
 
-## Productivity Systems
-### Getting Things Done (GTD)
-### Pomodoro Technique
-### Time Blocking Method
+## Paid Advertising
+### ${mode === 'lite' ? 'Google Ads' : 'Search Engine Marketing (SEM)'}
+### ${mode === 'lite' ? 'Social Ads' : 'Social Media Advertising Platforms'}
+${mode === 'comprehensive' ? '### Display & Retargeting Campaigns\n### Ad Performance Optimization' : ''}
 
-## Focus and Concentration
-### Eliminating Distractions
-### Deep Work Principles
-### Attention Management
+## Analytics & Optimization
+### ${mode === 'lite' ? 'Key Metrics' : 'Conversion Tracking & Attribution'}
+### ${mode === 'lite' ? 'A/B Testing' : 'Advanced Analytics & Reporting'}
+${mode === 'comprehensive' ? '### Customer Journey Analysis\n### ROI Measurement & Optimization' : ''}
 
-## Tools and Technology
-### Digital Planning Apps
-### Calendar Management
-### Automation Strategies
+${mode === 'comprehensive' ? `## Email Marketing
+### Automation & Segmentation
+### Personalization Strategies
+### Deliverability & Compliance
 
-## Work-Life Balance
-### Boundary Setting
-### Energy Management
-### Stress Reduction Techniques`),
+## Emerging Trends
+### AI-Powered Marketing Tools
+### Voice Search Optimization
+### Privacy-First Marketing Strategies` : ''}`),
     
-    createUserMessage(`Now create a mindmap for: "${topic}"`)
+    createUserMessage(`Now create a ${mode} mindmap for: "${topic}"`)
   ];
 }
 
@@ -206,51 +277,54 @@ export function createFollowUpMindmapPrompt(
   originalPrompt: string,
   currentMindmap: string,
   followUpQuestion: string,
-  previousPrompts: string[]
+  previousPrompts: string[],
+  mode: MindmapMode = 'comprehensive'
 ): CoreMessage[] {
-  return [
-    createSystemMessage(getMindmapSystemPrompt()),
-    createUserMessage(`<context>
-You previously created this mindmap for "${originalPrompt}":
+  const infoType = analyzeCurrency(followUpQuestion);
+  const webSearchGuidance = getWebSearchGuidance(infoType);
 
+  return [
+    createSystemMessage(getMindmapSystemPrompt(mode)),
+    createUserMessage(`<context>
+Original mindmap for "${originalPrompt}":
 ${currentMindmap}
 
-The user now asks: "${followUpQuestion}"
-
-Previous questions in this session: ${previousPrompts.join(", ")}
+Follow-up: "${followUpQuestion}"
+Previous questions: ${previousPrompts.join(", ")}
 </context>
 
-<enhancement_process>
-Follow this enhancement process:
+<enhancement_strategy>
+${webSearchGuidance}
 
-1. **Question Analysis**: What specific aspect does the user want to explore?
-2. **Currency Assessment**: Apply the decision framework to the follow-up:
-   - 🔍 Does this follow-up contain [CURRENT_INFO_REQUIRED] indicators?
-   - 🧠 Is this primarily [STATIC_KNOWLEDGE] expansion?
-   - Decision: Use web search if [CURRENT_INFO_REQUIRED] is identified
-3. **Information Gathering**: Execute web search if needed for current data
-4. **Integration Assessment**: How does this relate to the existing mindmap?
-5. **Enhancement Strategy**: Should I add, expand, reorganize, or refine?
-6. **Quality Check**: Does the updated mindmap maintain balance and clarity?
-</enhancement_process>
+**CRITICAL INSTRUCTION**: If this follow-up involves current information, recent developments, or you're unsure about accuracy, USE THE WEB SEARCH TOOL IMMEDIATELY before updating the mindmap. You HAVE live internet access and are NOT limited by training data cutoffs.
 
-<update_strategy>
-Update the mindmap by:
-- Adding relevant new sections if needed
-- Expanding existing sections with more detail
-- Reorganizing content for better flow
-- Refining existing content for clarity
-- Maintaining the overall structure and balance
-- Including current information when relevant (use web search)
-</update_strategy>
+**INTEGRATION APPROACH**:
+1. **Analyze**: How does follow-up relate to existing content?
+2. **Search First**: Use web search if current information is needed - YOU HAVE LIVE ACCESS
+3. **Enhance**: Add, expand, reorganize, or refine sections
+4. **Balance**: Maintain overall structure and flow
+5. **Verify**: Ensure coherence with original topic
+</enhancement_strategy>
 
-<important>
-Provide the complete updated mindmap, ensuring it addresses the follow-up question while maintaining coherence with the original topic.
-</important>`),
+<update_methods>
+- **ADD**: New sections for unexplored aspects
+- **EXPAND**: More detail in existing sections  
+- **REORGANIZE**: Better information flow
+- **REFINE**: Clearer, more precise content
+- **INTEGRATE**: Blend new info with existing structure
+</update_methods>
+
+<quality_check>
+- Does it address the follow-up question?
+- Maintains original topic coherence?
+- Balanced information distribution?
+- Clear hierarchical structure?
+- ${mode === 'lite' ? 'Stays within lite constraints?' : 'Comprehensive coverage maintained?'}
+</quality_check>`),
   ];
 }
 
-// TOPIC SHIFT DETECTION PROMPTS
+// TOPIC SHIFT DETECTION
 
 export function createTopicShiftPrompt(
   currentTopic: string,
@@ -259,82 +333,70 @@ export function createTopicShiftPrompt(
 ): CoreMessage[] {
   return [
     createSystemMessage(getTopicShiftSystemPrompt()),
-    createUserMessage(`<analysis_task>
-Analyze this follow-up question for topic shift:
+    createUserMessage(`<analysis>
+**Current Topic**: "${currentTopic}"
+**Original Prompt**: "${originalPrompt}"  
+**Follow-up**: "${followUpQuestion}"
+</analysis>
 
-**Current Mindmap Topic**: "${currentTopic}"
-**Original Prompt**: "${originalPrompt}"
-**Follow-up Question**: "${followUpQuestion}"
-</analysis_task>
+<evaluation_steps>
+1. **Semantic Analysis**: Conceptual relationship strength
+2. **Scope Assessment**: Fits within current mindmap boundaries?
+3. **Integration Test**: Can be meaningfully added without confusion?
+4. **User Intent**: What outcome does user likely want?
+5. **Confidence Rating**: How certain is this decision?
+</evaluation_steps>
 
-<analysis_steps>
-Perform this analysis:
-
-1. **Semantic Relationship**: How related are these topics conceptually?
-2. **Scope Assessment**: Would the follow-up fit within the current mindmap's scope?
-3. **User Intent**: What is the user likely trying to achieve?
-4. **Integration Feasibility**: Can this be meaningfully integrated?
-</analysis_steps>
-
-<examples>
-Examples for reference:
-- Current: "Python Programming Basics" + Follow-up: "How do I handle exceptions?" → NOT a shift
-- Current: "Python Programming Basics" + Follow-up: "Best investment strategies" → IS a shift
-- Current: "Healthy Cooking" + Follow-up: "What about meal prep?" → NOT a shift
-- Current: "Healthy Cooking" + Follow-up: "How to fix my car?" → IS a shift
-</examples>
-
-<important>
-Provide your analysis in the required JSON format.
-</important>`),
+<decision_matrix>
+- **High Confidence Integration**: Clear conceptual connection
+- **Low Confidence Integration**: Weak but possible connection → suggest clarification
+- **High Confidence Shift**: Clearly unrelated topics
+- **Ambiguous Case**: Return "clarify_intent" for user guidance
+</decision_matrix>`),
   ];
 }
 
 export function createNewTopicMindmapPrompt(
   originalTopic: string,
-  newQuestion: string
+  newQuestion: string,
+  mode: MindmapMode = 'comprehensive'
 ): CoreMessage[] {
+  const infoType = analyzeCurrency(newQuestion);
+  const webSearchGuidance = getWebSearchGuidance(infoType);
+  const thinkingProcess = getThinkingProcess(mode);
+
   return [
-    createSystemMessage(getMindmapSystemPrompt()),
+    createSystemMessage(getMindmapSystemPrompt(mode)),
     createUserMessage(`<task>
-Create a comprehensive mindmap for: "${newQuestion}"
+Create a ${mode} mindmap for NEW TOPIC: "${newQuestion}"
 </task>
 
 <context>
-This is a new topic, different from the previous topic: "${originalTopic}"
+Previous topic was: "${originalTopic}" (now starting fresh)
 </context>
 
-<thinking_process>
-Follow this thinking process for the new topic:
+<information_strategy>
+${webSearchGuidance}
 
-1. **Topic Analysis**: What are the core aspects of this new topic?
-2. **Currency Assessment**: Apply the decision framework:
-   - 🔍 Does this topic contain [CURRENT_INFO_REQUIRED] indicators?
-   - 🧠 Is this primarily [STATIC_KNOWLEDGE] that doesn't change?
-   - Decision: Use web search if [CURRENT_INFO_REQUIRED] is identified
-3. **Information Gathering**: Execute web search if needed, then combine with knowledge
-4. **Audience Consideration**: What would someone learning this topic need to know?
-5. **Structure Planning**: How can I organize this information hierarchically?
-6. **Content Selection**: What are the most important points to include?
+**CRITICAL INSTRUCTION**: If this new topic involves current information, recent developments, or you're unsure about accuracy, USE THE WEB SEARCH TOOL IMMEDIATELY before creating the mindmap. You HAVE live internet access and are NOT limited by training data cutoffs.
+</information_strategy>
+
+<thinking_process>
+${thinkingProcess}
 </thinking_process>
 
-<requirements>
-Generate a well-structured mindmap that covers:
-- Fundamental concepts and definitions
-- Key components or categories
-- Practical applications or examples
-- Important considerations or best practices
-- Related concepts or connections
-- Current trends and developments (use web search if needed)
-</requirements>
-
-<important>
-Create a title that clearly describes the topic, not generic phrases like "Mind Map" or "Overview".
-</important>`),
+<fresh_start_requirements>
+- Completely new mindmap structure
+- No reference to previous topic
+- ${mode === 'lite' ? 'Focused, essential coverage' : 'Comprehensive exploration'}
+- Current information integration when relevant (use web search if needed)
+- Clear, descriptive title
+- Accurate dates and temporal references
+</fresh_start_requirements>`),
   ];
 }
 
-// PROMPT ENHANCEMENT UTILITIES
+// ENHANCED UTILITIES
 
 export function enhancePromptWithContext(
   basePrompt: string,
@@ -343,41 +405,62 @@ export function enhancePromptWithContext(
     purpose?: 'learning' | 'reference' | 'teaching' | 'planning';
     timeConstraint?: 'quick' | 'detailed' | 'comprehensive';
     format?: 'academic' | 'practical' | 'creative';
+    mode?: MindmapMode;
   }
 ): string {
-  let enhancement = basePrompt;
+  const enhancements = [];
   
   if (context.userExpertise) {
-    enhancement += `\n\nTarget Audience: ${context.userExpertise} level`;
+    enhancements.push(`**Audience**: ${context.userExpertise} level`);
   }
   
   if (context.purpose) {
-    enhancement += `\nPurpose: For ${context.purpose}`;
+    enhancements.push(`**Purpose**: ${context.purpose}`);
   }
   
   if (context.timeConstraint) {
-    enhancement += `\nDepth: ${context.timeConstraint} coverage`;
+    enhancements.push(`**Depth**: ${context.timeConstraint}`);
   }
   
   if (context.format) {
-    enhancement += `\nStyle: ${context.format} approach`;
+    enhancements.push(`**Style**: ${context.format} approach`);
+  }
+
+  if (context.mode) {
+    enhancements.push(`**Mode**: ${context.mode} mindmap`);
   }
   
-  return enhancement;
+  return enhancements.length > 0 
+    ? `${basePrompt}\n\n<customization>\n${enhancements.join('\n')}\n</customization>`
+    : basePrompt;
 }
 
-export function addChainOfThoughtPrompting(prompt: string): string {
+export function addChainOfThoughtPrompting(prompt: string, mode: MindmapMode = 'comprehensive'): string {
   return `${prompt}
 
-<thinking>
-Before generating the mindmap, think through this step by step:
-1. What are the core components of this topic?
-2. How should I organize these components hierarchically?
-3. What details are most important for each component?
-4. How can I ensure balanced coverage across all areas?
-</thinking>
+<reasoning>
+Think step-by-step:
+1. Core components identification
+2. Hierarchical organization strategy  
+3. Essential details for each component
+4. ${mode === 'lite' ? 'Focused coverage priorities' : 'Comprehensive balance assurance'}
+5. Current information integration needs
+</reasoning>`;
+}
 
-<task>
-Now generate the mindmap:
-</task>`;
+// ERROR HANDLING UTILITIES
+
+export function createClarificationPrompt(ambiguousTopic: string): string {
+  return `The topic "${ambiguousTopic}" could be interpreted in multiple ways. Could you clarify what specific aspect you'd like me to focus on? For example:
+
+- Are you looking for practical applications?
+- Do you want theoretical foundations?
+- Are you interested in current trends?
+- Would you prefer a specific industry perspective?
+
+This will help me create the most relevant mindmap for your needs.`;
+}
+
+export function createFallbackPrompt(topic: string, mode: MindmapMode): string {
+  return `I'll create a ${mode} mindmap for "${topic}" based on available information. If you need more current data or specific aspects covered, please let me know and I can enhance it further.`;
 }

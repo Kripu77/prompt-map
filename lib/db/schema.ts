@@ -6,6 +6,7 @@ import {
   primaryKey,
   integer,
   json,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 // NextAuth schema compatible with Drizzle
@@ -98,12 +99,22 @@ export const anonymousMindmaps = pgTable("anonymous_mindmap", {
   referrer: text("referrer"), // Optional referrer info
 });
 
+// For storing user settings and preferences
+export const userSettings = pgTable("user_settings", {
+  userId: text("user_id").notNull().primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  showReasoning: boolean("show_reasoning").default(true).notNull(),
+  mindmapMode: text("mindmap_mode").default("lite").notNull(), // 'lite' or 'comprehensive'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
   conversations: many(conversations),
   onboarding: one(userOnboarding),
+  settings: one(userSettings),
 }));
 
 export const conversationsRelations = relations(conversations, ({ one }) => ({
@@ -116,6 +127,13 @@ export const conversationsRelations = relations(conversations, ({ one }) => ({
 export const userOnboardingRelations = relations(userOnboarding, ({ one }) => ({
   user: one(users, {
     fields: [userOnboarding.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userSettingsRelations = relations(userSettings, ({ one }) => ({
+  user: one(users, {
+    fields: [userSettings.userId],
     references: [users.id],
   }),
 }));

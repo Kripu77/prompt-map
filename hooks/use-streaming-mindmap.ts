@@ -36,11 +36,13 @@ export type UseStreamingMindmapReturn = StreamingMindmapState & StreamingMindmap
 export function useStreamingMindmap(): UseStreamingMindmapReturn {
   const { setMindmapData, setIsLoading: setStoreLoading, setError: setStoreError } = useMindmapStore();
   const { 
-    setReasoningContent, 
-    appendReasoningContent, 
-    setStreaming, 
-    setCurrentTopic, 
-    clearReasoning
+    setReasoningContent,
+    appendReasoningContent,
+    setStreaming,
+    setCurrentTopic,
+    clearReasoning,
+    showForGeneration,
+    hideAfterGeneration
   } = useReasoningPanelStore();
   const { createThread, isAuthenticated } = useThreads();
   const { data: session, status } = useSession();
@@ -183,7 +185,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       const decoder = new TextDecoder();
       let accumulatedContent = '';
       let accumulatedReasoning = ''; // Track reasoning separately
-
+      
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -273,10 +275,12 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       setStreaming(false); // Stop streaming in reasoning panel
       toast.error(`Failed to generate mindmap: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
-      setStreaming(false); // Ensure streaming is stopped in reasoning panel
-      abortControllerRef.current = null;
-    }
+        setIsLoading(false);
+        setStoreLoading(false);
+        setStreaming(false);
+        hideAfterGeneration(); // Explicitly hide after generation
+        abortControllerRef.current = null;
+      }
   }, [setMindmapData, handleCompletionTasks, clearReasoning, setCurrentTopic, setStreaming, appendReasoningContent]);
 
   const generateMindmap = useCallback(async (prompt: string, options?: MindmapGenerationOptions) => {

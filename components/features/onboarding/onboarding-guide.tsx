@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, HelpCircle, Info, CornerDownLeft, Sparkles, ArrowRight, Download, List } from 'lucide-react'
+import { X, HelpCircle, Info, CornerDownLeft, Sparkles, ArrowRight, Download, List, Brain, Settings } from 'lucide-react'
 import { Button } from '../../ui/button'
 import { cn } from '@/lib/utils'
+import { useUserSettings } from '@/hooks/use-user-settings'
+import { MindmapMode } from '@/lib/types/settings'
+import { toast } from 'sonner'
 
 // Define the onboarding state interface
 interface OnboardingState {
@@ -35,6 +38,14 @@ const ONBOARDING_STEPS = [
     description: 'Generate beautiful, interactive mind maps powered by AI. Let me show you how to get started.',
     position: 'center',
     icon: <Sparkles className="h-5 w-5" />,
+  },
+  {
+    id: 'mode-selection',
+    title: 'Choose Your Mindmap Mode',
+    description: 'Select between Lite mode (focused, concise mindmaps) or Comprehensive mode (detailed, extensive mindmaps). You can change this anytime in settings.',
+    position: 'center',
+    icon: <Brain className="h-5 w-5" />,
+    interactive: true,
   },
   {
     id: 'prompt-input',
@@ -122,6 +133,9 @@ interface OnboardingGuideProps {
 }
 
 export function OnboardingGuide({ userId }: OnboardingGuideProps) {
+  // User settings hook
+  const { settings, setMindmapMode } = useUserSettings();
+  
   // Local state
   const [onboardingState, setOnboardingState] = useState<OnboardingState>(defaultOnboardingState);
   const [isStateLoading, setIsStateLoading] = useState(true);
@@ -141,51 +155,58 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
   // Get the current step data
   const step = ONBOARDING_STEPS[currentStep];
   
-  // Load onboarding state from localStorage or database
+  // Load onboarding state from localStorage first, then sync with database
   useEffect(() => {
     const loadOnboardingState = async () => {
       setIsStateLoading(true);
       
       try {
+        // Always try localStorage first for immediate loading
+        const localData = localStorage.getItem('onboarding-state');
+        if (localData) {
+          const parsedData = JSON.parse(localData);
+          setOnboardingState(parsedData);
+          console.log('Loaded onboarding state from localStorage');
+        }
+        
+        // If user is signed in, sync with database in background
         if (userId) {
-          // Signed-in user: load from database
-          const response = await fetch('/api/user/onboarding');
-          
-          if (response.ok) {
-            const result = await response.json();
-            const data = result.success ? result.data : result;
-            setOnboardingState(data);
-          } else {
-            // If API request fails, fall back to localStorage
-            if (response.status === 429) {
-              console.warn('Rate limit exceeded for onboarding API, using localStorage');
-            } else {
-              console.error('Failed to load onboarding state from API:', response.status, response.statusText);
-            }
+          try {
+            const response = await fetch('/api/user/onboarding');
             
-            const localData = localStorage.getItem('onboarding-state');
-            if (localData) {
-              setOnboardingState(JSON.parse(localData));
+            if (response.ok) {
+              const result = await response.json();
+              const dbData = result.success ? result.data : result;
+              
+              // Compare with localStorage data and use the most recent
+              if (localData) {
+                const localParsedData = JSON.parse(localData);
+                const localTimestamp = localParsedData.lastSeenAt || 0;
+                const dbTimestamp = dbData.lastSeenAt || 0;
+                
+                // Use database data if it's more recent, otherwise keep localStorage
+                if (dbTimestamp > localTimestamp) {
+                  setOnboardingState(dbData);
+                  localStorage.setItem('onboarding-state', JSON.stringify(dbData));
+                  console.log('Updated onboarding state from database (more recent)');
+                }
+              } else {
+                // No localStorage data, use database data
+                setOnboardingState(dbData);
+                localStorage.setItem('onboarding-state', JSON.stringify(dbData));
+                console.log('Loaded onboarding state from database (no local data)');
+              }
+            } else {
+              console.warn('Failed to sync onboarding state with database:', response.status);
             }
-          }
-        } else {
-          // Non-signed-in user: load from localStorage
-          const localData = localStorage.getItem('onboarding-state');
-          if (localData) {
-            setOnboardingState(JSON.parse(localData));
+          } catch (dbError) {
+            console.warn('Database sync failed, using localStorage data:', dbError);
           }
         }
       } catch (error) {
         console.error('Failed to load onboarding state:', error);
-        // Always try to fall back to localStorage
-        try {
-          const localData = localStorage.getItem('onboarding-state');
-          if (localData) {
-            setOnboardingState(JSON.parse(localData));
-          }
-        } catch (localStorageError) {
-          console.error('Failed to load from localStorage:', localStorageError);
-        }
+        // If all else fails, use default state
+        setOnboardingState(defaultOnboardingState);
       } finally {
         setIsStateLoading(false);
       }
@@ -194,14 +215,22 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
     loadOnboardingState();
   }, [userId]);
   
-  // Persist onboarding state to localStorage or database
+  // Persist onboarding state to localStorage immediately and sync with database
   const saveOnboardingState = useCallback(async (newState: OnboardingState) => {
     // Update local state immediately
     setOnboardingState(newState);
     
+    // Always save to localStorage first for immediate persistence
     try {
-      if (userId) {
-        // Signed-in user: save to database
+      localStorage.setItem('onboarding-state', JSON.stringify(newState));
+      console.log('Saved onboarding state to localStorage');
+    } catch (localStorageError) {
+      console.error('Failed to save to localStorage:', localStorageError);
+    }
+    
+    // If user is signed in, sync with database in background
+    if (userId) {
+      try {
         // Transform the state to match API expectations
         const apiPayload = {
           step: newState.lastCompletedStep,
@@ -217,25 +246,13 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
           body: JSON.stringify(apiPayload),
         });
         
-        // If we get a rate limit error, still save to localStorage
-        if (!response.ok) {
-          if (response.status === 429) {
-            console.warn('Rate limit exceeded for onboarding API, falling back to localStorage');
-          } else {
-            console.error('Failed to save onboarding state to API:', response.status, response.statusText);
-          }
+        if (response.ok) {
+          console.log('Successfully synced onboarding state with database');
+        } else {
+          console.warn('Failed to sync onboarding state with database:', response.status);
         }
-      }
-      
-      // Always save to localStorage as fallback
-      localStorage.setItem('onboarding-state', JSON.stringify(newState));
-    } catch (error) {
-      console.error('Failed to save onboarding state:', error);
-      // Ensure localStorage is still updated even if API fails
-      try {
-        localStorage.setItem('onboarding-state', JSON.stringify(newState));
-      } catch (localStorageError) {
-        console.error('Failed to save to localStorage:', localStorageError);
+      } catch (error) {
+        console.warn('Database sync failed, data saved locally:', error);
       }
     }
   }, [userId]);
@@ -602,6 +619,29 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
     };
   }, []);
 
+  // Handle mode selection for interactive step
+  const handleModeSelect = async (mode: MindmapMode) => {
+    try {
+      await setMindmapMode(mode);
+      toast.success(`Mindmap mode set to ${mode === 'lite' ? 'Lite' : 'Comprehensive'}`);
+      
+      // Mark step as completed and move to next
+      if (step?.id) {
+        markStepCompleted(step.id, currentStep);
+      }
+      
+      if (currentStep < ONBOARDING_STEPS.length - 1) {
+        setTimeout(() => {
+          setCurrentStep(currentStep + 1);
+        }, 500); // Small delay to show the toast
+      } else {
+        completeOnboarding();
+      }
+    } catch (error) {
+      toast.error('Failed to update mindmap mode');
+    }
+  };
+
   const handleNext = () => {
     // Mark the current step as completed
     if (step?.id) {
@@ -772,6 +812,47 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
               {step.description}
             </p>
             
+            {/* Interactive Mode Selection for mode-selection step */}
+            {step.id === 'mode-selection' && (
+              <div className="space-y-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Button
+                    variant={settings?.mindmapMode === 'lite' ? 'default' : 'outline'}
+                    className="h-auto p-4 flex flex-col items-center gap-2 text-left"
+                    onClick={() => handleModeSelect('lite')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-4 w-4" />
+                      <span className="font-medium">Lite Mode</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Focused, concise mindmaps with 3-5 main branches
+                    </p>
+                  </Button>
+                  
+                  <Button
+                    variant={settings?.mindmapMode === 'comprehensive' ? 'default' : 'outline'}
+                    className="h-auto p-4 flex flex-col items-center gap-2 text-left"
+                    onClick={() => handleModeSelect('comprehensive')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span className="font-medium">Comprehensive</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Detailed, extensive mindmaps with full coverage
+                    </p>
+                  </Button>
+                </div>
+                
+                <div className="text-xs text-muted-foreground text-center">
+                  Current mode: <span className="font-medium text-foreground">
+                    {settings?.mindmapMode === 'lite' ? 'Lite' : 'Comprehensive'}
+                  </span>
+                </div>
+              </div>
+            )}
+            
             {/* Tooltip Controls */}
             <div className="flex items-center justify-between mt-2 sm:mt-3 pt-2 border-t border-border/40">
               <div className="flex gap-1">
@@ -801,13 +882,16 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
                     Prev
                   </Button>
                 )}
-                <Button 
-                  size="sm" 
-                  onClick={handleNext}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 sm:px-4 h-7 sm:h-9 text-xs sm:text-sm"
-                >
-                  {currentStep === ONBOARDING_STEPS.length - 1 ? "Finish" : "Next"}
-                </Button>
+                {/* Hide Next button for interactive steps */}
+                {!step.interactive && (
+                  <Button 
+                    size="sm" 
+                    onClick={handleNext}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 sm:px-4 h-7 sm:h-9 text-xs sm:text-sm"
+                  >
+                    {currentStep === ONBOARDING_STEPS.length - 1 ? "Finish" : "Next"}
+                  </Button>
+                )}
               </div>
             </div>
           </motion.div>

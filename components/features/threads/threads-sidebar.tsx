@@ -319,7 +319,7 @@ export function ThreadsSidebar() {
             <h3 className="text-sm font-normal line-clamp-1 flex-1">{thread.title}</h3>
             {thread.reasoning && (
               <div className="relative group/tooltip">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 border border-primary/20 animate-pulse hover:animate-none transition-all duration-300 hover:bg-primary/20 hover:scale-110">
+                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 border border-primary/20 animate-pulse hover:animate-none transition-all duration-3000 hover:bg-primary/20 hover:scale-110">
                   <Brain className="h-3 w-3 text-primary" />
                 </div>
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-popover border border-border rounded-md shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
