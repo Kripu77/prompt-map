@@ -24,6 +24,8 @@ import { usePathname } from "next/navigation";
 import { Input } from "../../ui/input";
 import { setSidebarHandler } from "../../layout/header";
 
+
+
 function SidebarCloseIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -86,6 +88,7 @@ export function ThreadsSidebar() {
     };
   }, [setIsOpen]);
 
+
   useEffect(() => {
     if (isAuthenticated && isOpen && !isLoading) {
       if (threads.length === 0 || !hasFetchedRef.current) {
@@ -94,6 +97,7 @@ export function ThreadsSidebar() {
       }
     }
   }, [isOpen, isAuthenticated, fetchThreads, threads.length, isLoading]);
+
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -105,6 +109,7 @@ export function ThreadsSidebar() {
     let timeoutId: NodeJS.Timeout;
     
     if (isAuthenticated && isOpen && mindmapData) {
+
       hasFetchedRef.current = false;
       
       timeoutId = setTimeout(() => {
@@ -117,6 +122,8 @@ export function ThreadsSidebar() {
     };
   }, [mindmapData, isAuthenticated, isOpen, fetchThreads]);
 
+
+
   useEffect(() => {
     const checkSize = () => {
       if (window.innerWidth < 768) {
@@ -124,17 +131,20 @@ export function ThreadsSidebar() {
       }
     };
     
+
     checkSize();
     
     window.addEventListener('resize', checkSize);
     return () => window.removeEventListener('resize', checkSize);
   }, [setIsOpen]);
 
+
   useEffect(() => {
     if (typeof window !== 'undefined' && isOpen) {
       const availableHeight = window.innerHeight - 150;
       const estimatedItemsPerScreen = Math.max(6, Math.floor(availableHeight / 60));
       
+
       setDisplayLimit(estimatedItemsPerScreen + 4);
     }
   }, [isOpen]);
@@ -256,6 +266,7 @@ export function ThreadsSidebar() {
   }
 
   const handleThreadClick = async (thread: Thread) => {
+
     try {
       const loadedThread = await loadThread(thread.id);
       if (loadedThread && loadedThread.content) {
@@ -290,6 +301,7 @@ export function ThreadsSidebar() {
     }
   };
 
+
   const formatTime = (date: Date) => {
     const now = new Date();
     const minutesDiff = differenceInMinutes(now, date);
@@ -304,11 +316,14 @@ export function ThreadsSidebar() {
     }
   };
 
+
   const renderThreadItem = (thread: Thread) => (
     <div
       key={thread.id}
       className={cn(
+
         "w-full py-2 px-3 text-left hover:bg-muted/50 cursor-pointer group transition-colors relative",
+
         selectedThread?.id === thread.id && "bg-muted/30"
       )}
       onClick={() => handleThreadClick(thread)}
@@ -467,3 +482,4 @@ export function ThreadsSidebar() {
     </>
   );
 }
+

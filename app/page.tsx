@@ -1,4 +1,5 @@
 import { MindmapContainer } from '@/components/features/mindmap/mindmap-container';
+
 import { AIReasoningPanelWrapper } from '@/components/features/mindmap/ai-reasoning-panel-wrapper';
 import { OnboardingGuide } from '@/components/features/onboarding';
 import { getServerSession } from 'next-auth';
@@ -12,6 +13,7 @@ export default async function Home() {
   return (
     <main className="flex-1 flex flex-col overflow-hidden">
       <MindmapContainer />
+
       <AIReasoningPanelWrapper />
       {/* Temporarily hidden on mobile screens */}
       <div className="hidden md:block">

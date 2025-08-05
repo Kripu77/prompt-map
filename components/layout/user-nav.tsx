@@ -73,6 +73,7 @@ export function UserNav() {
       null
     ) : (
       <Button variant="outline" size="sm" asChild>
+
         <Link href="/signin">
           <LogIn className="mr-2 h-4 w-4" />
           Sign In
@@ -102,6 +103,7 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
+
           onClick={() => setSettingsOpen(true)}
           className="cursor-pointer"
         >
@@ -120,3 +122,4 @@ export function UserNav() {
     </DropdownMenu>
   );
 }
+

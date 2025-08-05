@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../ui/dropdown-menu";
 import type { MindmapMode } from "@/lib/api/llm/prompts/mindmap-prompts";
 
+
 interface PromptInputProps {
   onSubmit: (value: string) => void;
   loading?: boolean;
@@ -51,11 +52,13 @@ export function PromptInput({
     }
   };
 
+
   const handleModeSelect = (newMode: MindmapMode) => {
     if (onModeChange) {
       onModeChange(newMode);
     }
   };
+
 
   return (
     <div className="w-full">

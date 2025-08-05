@@ -129,7 +129,7 @@ export function useMindmapGeneration(): UseMindmapGenerationReturn {
         setIsUserGenerated(true);
         setIsFollowUpMode(true);
         
-        // Handle analytics and notifications
+
         if (!isAuthenticated && data.content.trim()) {
           recordAnonymousMindmap(
             value, 

@@ -9,6 +9,7 @@ import { useUserSettings } from '@/hooks/use-user-settings'
 import { MindmapMode } from '@/lib/types/settings'
 import { toast } from 'sonner'
 
+
 // Define the onboarding state interface
 interface OnboardingState {
   hasCompletedOnboarding?: boolean;
@@ -48,6 +49,7 @@ const ONBOARDING_STEPS = [
     interactive: true,
   },
   {
+
     id: 'prompt-input',
     title: 'Start with a prompt',
     description: 'Type a topic or question here to generate your first mind map. Try something like "Core concepts of Machine Learning" or "Project management best practices".',
@@ -156,6 +158,7 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
   const step = ONBOARDING_STEPS[currentStep];
   
   // Load onboarding state from localStorage first, then sync with database
+
   useEffect(() => {
     const loadOnboardingState = async () => {
       setIsStateLoading(true);
@@ -215,11 +218,14 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
     loadOnboardingState();
   }, [userId]);
   
+
   // Persist onboarding state to localStorage immediately and sync with database
+
   const saveOnboardingState = useCallback(async (newState: OnboardingState) => {
     // Update local state immediately
     setOnboardingState(newState);
     
+
     // Always save to localStorage first for immediate persistence
     try {
       localStorage.setItem('onboarding-state', JSON.stringify(newState));
@@ -254,6 +260,14 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
       } catch (error) {
         console.warn('Database sync failed, data saved locally:', error);
       }
+      
+        });
+      }
+      
+      // Always save to localStorage as fallback
+      localStorage.setItem('onboarding-state', JSON.stringify(newState));
+    } catch (error) {
+      console.error('Failed to save onboarding state:', error);
     }
   }, [userId]);
   
@@ -306,18 +320,20 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
   useEffect(() => {
     if (isStateLoading) return;
     
+
     // Only show the guide if user hasn't completed onboarding
     // Check explicitly for hasCompletedOnboarding being false or undefined
     const hasCompleted = onboardingState.hasCompletedOnboarding === true;
     const shouldShowGuide = !hasCompleted;
-    
-    setIsGuideActive(shouldShowGuide);
-    
-    // If they were in the middle of onboarding, restore their last position
-    if (shouldShowGuide && (onboardingState.lastCompletedStep || -1) >= 0) {
-      setCurrentStep(Math.min((onboardingState.lastCompletedStep || -1) + 1, ONBOARDING_STEPS.length - 1));
-    }
+
+    // Only show the guide if first visit and hasn't completed onboarding,
+    // or if they've explicitly restarted
+    const shouldShowGuide = 
+      (isFirstVisit && !onboardingState.hasCompletedOnboarding) ||
+      (onboardingState.hasCompletedOnboarding === false && 
+       (onboardingState.lastCompletedStep || -1) >= 0);
   }, [isStateLoading, onboardingState]);
+
 
   // Update isMobile state based on window size
   useEffect(() => {
@@ -619,6 +635,7 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
     };
   }, []);
 
+
   // Handle mode selection for interactive step
   const handleModeSelect = async (mode: MindmapMode) => {
     try {
@@ -882,6 +899,7 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
                     Prev
                   </Button>
                 )}
+
                 {/* Hide Next button for interactive steps */}
                 {!step.interactive && (
                   <Button 
@@ -892,6 +910,7 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
                     {currentStep === ONBOARDING_STEPS.length - 1 ? "Finish" : "Next"}
                   </Button>
                 )}
+
               </div>
             </div>
           </motion.div>
@@ -900,3 +919,4 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
     </>
   )
 }
+

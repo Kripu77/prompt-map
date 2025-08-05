@@ -5,6 +5,7 @@ import { SessionProvider } from "@/components/features/auth";
 import { Header, ScalableContent } from "@/components/layout";
 import { ThreadsSidebar } from "@/components/features/threads";
 import { AIReasoningPanelWrapper } from "@/components/features/mindmap/ai-reasoning-panel-wrapper";
+
 import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"

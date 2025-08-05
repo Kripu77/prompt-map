@@ -6,6 +6,7 @@ import { Save, Loader2 } from "lucide-react";
 import { useThreads } from "@/hooks/use-threads";
 import { useMindmapStore } from "@/lib/stores/mindmap-store";
 import { useReasoningPanelStore } from "@/lib/stores/reasoning-panel-store";
+
 import { toast } from "sonner";
 import { extractMindmapTitle } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ export function SaveThreadButton() {
   const { createThread, isAuthenticated, fetchThreads } = useThreads();
   const { mindmapData, prompt } = useMindmapStore();
   const { reasoningContent } = useReasoningPanelStore();
+
 
   const handleSaveClick = () => {
     if (!isAuthenticated) {
@@ -128,3 +130,4 @@ export function SaveThreadButton() {
     </>
   );
 }
+

@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
 
+
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,8 +127,10 @@ export function SignInForm() {
         className="mt-1"
       >
         <UserPlus className="mr-2 h-4 w-4" />
+
         Continue as Guest
       </Button>
     </div>
   );
 }
+

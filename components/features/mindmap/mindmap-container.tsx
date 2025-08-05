@@ -186,10 +186,11 @@ export function MindmapContainer() {
       {/* Main Content Area */}
       <div className="w-full h-[calc(100vh-5rem)] flex items-center justify-center pt-12 pb-24 sm:pt-16 sm:pb-28 relative overflow-hidden">
         <div className="w-full h-full flex items-center justify-center max-w-[100%] sm:max-w-[90%] md:max-w-[85%] mx-auto relative z-10">
-          
+
           {/* Content States */}
           <AnimatePresence mode="wait">
             {!displayContent && !isGenerating ? (
+
               <motion.div 
                 className="h-full flex flex-col items-center justify-center max-w-md text-center px-4"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -213,6 +214,7 @@ export function MindmapContainer() {
                 </p>
               </motion.div>
             ) : isGenerating && !streamingContent ? (
+
               <motion.div 
                 className="h-full flex flex-col items-center justify-center"
                 initial={{ opacity: 0 }}
@@ -299,7 +301,6 @@ export function MindmapContainer() {
         )}
       </AnimatePresence>
 
-      {/* Enhanced Prompt Input */}
       <motion.div 
         className="prompt-input-container fixed bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-[95%] sm:max-w-2xl px-2 sm:px-4 z-[200]"
         initial={{ opacity: 0, y: 30 }}

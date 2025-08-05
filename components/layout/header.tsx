@@ -56,7 +56,9 @@ export function Header() {
   const { theme, setTheme } = useTheme();
   const { mindmapRef, mindmapData } = useMindmapStore();
   const { isOpen, setIsOpen } = useSidebarStore();
+
   const { isVisible: isReasoningVisible, toggleVisibility: toggleReasoning } = useReasoningPanelStore();
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
@@ -211,6 +213,7 @@ export function Header() {
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuLabel className="text-xs">Options</DropdownMenuLabel>
               <DropdownMenuSeparator />
+
               
               <DropdownMenuItem onClick={toggleReasoning} className="cursor-pointer">
                 <div className="flex items-center gap-2">
