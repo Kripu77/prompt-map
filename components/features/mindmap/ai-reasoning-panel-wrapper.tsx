@@ -12,6 +12,10 @@ export function AIReasoningPanelWrapper() {
     toggleVisibility 
   } = useReasoningPanelStore();
 
+  if (!isVisible) {
+    return null;
+  }
+
   return (
     <AIReasoningPanel
       reasoningContent={reasoningContent}

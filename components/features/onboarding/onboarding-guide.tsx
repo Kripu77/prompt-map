@@ -637,7 +637,7 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
       } else {
         completeOnboarding();
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to update mindmap mode');
     }
   };

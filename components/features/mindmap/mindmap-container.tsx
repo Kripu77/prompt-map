@@ -124,7 +124,7 @@ export function MindmapContainer() {
     try {
       await setMindmapMode(newMode);
       toast.success(`✨ Switched to ${newMode} mode`);
-    } catch (error) {
+    } catch {
       toast.error('Failed to update mindmap mode');
     }
   };

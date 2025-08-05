@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Brain, Zap, Settings, Eye, Target, Layers } from 'lucide-react';
+import { Brain, Zap, Settings, Eye, Layers } from 'lucide-react';
 import { useUserSettings } from '@/hooks/use-user-settings';
 import { MindmapMode } from '@/lib/types/settings';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     if (open && !loading && !settings) {
       reload();
     }
-  }, [open]); // Only depend on open to prevent infinite loops
+  }, [open, loading, reload, settings]); // Include all dependencies
 
   const handleReasoningToggle = async (checked: boolean) => {
     if (!settings) return;
@@ -41,7 +41,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       setUpdating(true);
       await updateSettings({ showReasoning: checked });
       toast.success(checked ? '🧠 Reasoning panel enabled' : '👁️ Reasoning panel hidden');
-    } catch (error) {
+    } catch {
       toast.error('Failed to update reasoning setting');
     } finally {
       setUpdating(false);
@@ -55,7 +55,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       setUpdating(true);
       await updateSettings({ mindmapMode: mode });
       toast.success(`✨ Switched to ${mode} mode`);
-    } catch (error) {
+    } catch {
       toast.error('Failed to update mindmap mode');
     } finally {
       setUpdating(false);
