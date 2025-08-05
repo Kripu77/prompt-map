@@ -260,14 +260,6 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
       } catch (error) {
         console.warn('Database sync failed, data saved locally:', error);
       }
-      
-        });
-      }
-      
-      // Always save to localStorage as fallback
-      localStorage.setItem('onboarding-state', JSON.stringify(newState));
-    } catch (error) {
-      console.error('Failed to save onboarding state:', error);
     }
   }, [userId]);
   
@@ -320,18 +312,9 @@ export function OnboardingGuide({ userId }: OnboardingGuideProps) {
   useEffect(() => {
     if (isStateLoading) return;
     
-
     // Only show the guide if user hasn't completed onboarding
-    // Check explicitly for hasCompletedOnboarding being false or undefined
-    const hasCompleted = onboardingState.hasCompletedOnboarding === true;
-    const shouldShowGuide = !hasCompleted;
-
-    // Only show the guide if first visit and hasn't completed onboarding,
-    // or if they've explicitly restarted
-    const shouldShowGuide = 
-      (isFirstVisit && !onboardingState.hasCompletedOnboarding) ||
-      (onboardingState.hasCompletedOnboarding === false && 
-       (onboardingState.lastCompletedStep || -1) >= 0);
+    const shouldShowGuide = !onboardingState.hasCompletedOnboarding;
+    setIsGuideActive(shouldShowGuide);
   }, [isStateLoading, onboardingState]);
 
 
