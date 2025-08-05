@@ -37,9 +37,9 @@ export interface LLMError {
 
 
 const DEFAULT_CONFIG: Required<LLMConfig> = {
-  model: "deepseek/deepseek-r1-0528:free",
+  model: "deepseek/deepseek-r1-0528-qwen3-8b:free",
   temperature: 0.7,
-  maxTokens: 4000,
+  maxTokens: 2000,
   topP: 0.9,
   frequencyPenalty: 0,
   presencePenalty: 0,

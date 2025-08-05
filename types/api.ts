@@ -51,6 +51,7 @@ export interface Thread {
   createdAt: string;
   updatedAt: string;
   content: string;
+  reasoning?: string;
   userId: string;
   metadata?: {
     nodeCount?: number;
@@ -62,12 +63,14 @@ export interface Thread {
 export interface ThreadCreateRequest {
   title: string;
   content: string;
+  reasoning?: string;
   metadata?: Thread['metadata'];
 }
 
 export interface ThreadUpdateRequest {
   title?: string;
   content?: string;
+  reasoning?: string;
   metadata?: Partial<Thread['metadata']>;
 }
 
@@ -111,6 +114,7 @@ export interface OnboardingState {
   currentStep: number;
   completedSteps: string[];
   isCompleted: boolean;
+  hasCompletedOnboarding?: boolean;
   lastUpdated: string;
 }
 

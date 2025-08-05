@@ -5,6 +5,8 @@ import { Button } from "../../ui/button";
 import { Save, Loader2 } from "lucide-react";
 import { useThreads } from "@/hooks/use-threads";
 import { useMindmapStore } from "@/lib/stores/mindmap-store";
+import { useReasoningPanelStore } from "@/lib/stores/reasoning-panel-store";
+
 import { toast } from "sonner";
 import { extractMindmapTitle } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,8 @@ export function SaveThreadButton() {
   const [isSaving, setIsSaving] = useState(false);
   const { createThread, isAuthenticated, fetchThreads } = useThreads();
   const { mindmapData, prompt } = useMindmapStore();
+  const { reasoningContent } = useReasoningPanelStore();
+
 
   const handleSaveClick = () => {
     if (!isAuthenticated) {
@@ -49,9 +53,15 @@ export function SaveThreadButton() {
       return;
     }
 
+ 
+    if (!mindmapData || !mindmapData.trim()) {
+      toast.error("No mind map content to save");
+      return;
+    }
+
     try {
       setIsSaving(true);
-      await createThread(title, mindmapData || "");
+      await createThread(title, mindmapData, reasoningContent || undefined);
       // Refresh the threads list to update the sidebar
       fetchThreads();
       setIsOpen(false);
@@ -119,4 +129,5 @@ export function SaveThreadButton() {
       </Dialog>
     </>
   );
-} 
+}
+

@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { UserPlus } from "lucide-react";
+
 
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -124,8 +126,11 @@ export function SignInForm() {
         onClick={() => window.location.href = "/"}
         className="mt-1"
       >
+        <UserPlus className="mr-2 h-4 w-4" />
+
         Continue as Guest
       </Button>
     </div>
   );
-} 
+}
+

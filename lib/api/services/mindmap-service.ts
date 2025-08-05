@@ -69,7 +69,7 @@ export class MindmapService {
         messages,
         config: {
           temperature: 0.7,
-          maxTokens: 3000,
+          maxTokens: 2000,
         }
       });
       

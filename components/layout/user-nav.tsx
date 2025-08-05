@@ -14,12 +14,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useState } from "react";
 import { useSidebarStore } from "@/lib/stores/sidebar-store";
+import { Settings, LogOut, LogIn } from "lucide-react";
+import { SettingsModal } from "@/components/settings/settings-modal";
 
 export function UserNav() {
   const { data: session, status } = useSession();
   const isLoading = status === "loading";
   const isAuthenticated = status === "authenticated";
   const [isMobile, setIsMobile] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { setIsOpen } = useSidebarStore();
   const [prevStatus, setPrevStatus] = useState(status);
 
@@ -70,7 +73,11 @@ export function UserNav() {
       null
     ) : (
       <Button variant="outline" size="sm" asChild>
-        <Link href="/signin">Sign In</Link>
+
+        <Link href="/signin">
+          <LogIn className="mr-2 h-4 w-4" />
+          Sign In
+        </Link>
       </Button>
     );
   }
@@ -96,12 +103,23 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
+
+          onClick={() => setSettingsOpen(true)}
+          className="cursor-pointer"
+        >
+          <Settings className="mr-2 h-4 w-4" />
+          Settings
+        </DropdownMenuItem>
+        <DropdownMenuItem
           onClick={() => signOut({ callbackUrl: "/" })}
           className="cursor-pointer"
         >
+          <LogOut className="mr-2 h-4 w-4" />
           Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </DropdownMenu>
   );
-} 
+}
+

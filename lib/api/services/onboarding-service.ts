@@ -15,6 +15,7 @@ export class OnboardingService {
           currentStep: 0,
           completedSteps: [],
           isCompleted: false,
+          hasCompletedOnboarding: false,
           lastUpdated: new Date().toISOString(),
         };
       }
@@ -23,6 +24,7 @@ export class OnboardingService {
         currentStep: state.lastCompletedStep + 1,
         completedSteps: state.completedSteps || [],
         isCompleted: Boolean(state.hasCompletedOnboarding),
+        hasCompletedOnboarding: Boolean(state.hasCompletedOnboarding),
         lastUpdated: state.updatedAt?.toISOString() || state.lastSeenAt?.toISOString() || new Date().toISOString(),
       };
     } catch (error) {
@@ -69,6 +71,7 @@ export class OnboardingService {
         currentStep: result.lastCompletedStep + 1,
         completedSteps: result.completedSteps || [],
         isCompleted: Boolean(result.hasCompletedOnboarding),
+        hasCompletedOnboarding: Boolean(result.hasCompletedOnboarding),
         lastUpdated: result.updatedAt?.toISOString() || result.lastSeenAt?.toISOString() || now.toISOString(),
       };
     } catch (error) {

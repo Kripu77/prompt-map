@@ -2,8 +2,9 @@
 
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "../ui/button";
-import { Download, Sparkles, MoreVertical, LogIn, Moon, Sun } from "lucide-react";
+import { Download, Sparkles, MoreVertical, LogIn, Moon, Sun, Brain } from "lucide-react";
 import { useMindmapStore } from "@/lib/stores/mindmap-store";
+import { useReasoningPanelStore } from "@/lib/stores/reasoning-panel-store";
 import { useTheme } from "next-themes";
 import { exportMindmap } from "@/lib/mindmap-utils";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,9 @@ export function Header() {
   const { theme, setTheme } = useTheme();
   const { mindmapRef, mindmapData } = useMindmapStore();
   const { isOpen, setIsOpen } = useSidebarStore();
+
+  const { isVisible: isReasoningVisible, toggleVisibility: toggleReasoning } = useReasoningPanelStore();
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
@@ -128,6 +132,21 @@ export function Header() {
               <SidebarIcon className="h-5 w-5" />
             </Button>
           )}
+          
+          {/* AI Reasoning Panel Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleReasoning}
+            className={cn(
+              "text-muted-foreground hover:text-foreground transition-colors",
+              isReasoningVisible && "text-primary bg-primary/10"
+            )}
+            title="Toggle AI Reasoning Panel"
+          >
+            <Brain className="h-5 w-5" />
+          </Button>
+          
           {mindmapData && (
             <Button 
               variant="outline" 
@@ -194,6 +213,20 @@ export function Header() {
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuLabel className="text-xs">Options</DropdownMenuLabel>
               <DropdownMenuSeparator />
+
+              
+              <DropdownMenuItem onClick={toggleReasoning} className="cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <Brain className={cn(
+                    "h-3.5 w-3.5",
+                    isReasoningVisible && "text-primary"
+                  )} />
+                  <span className="text-xs">
+                    {isReasoningVisible ? "Hide" : "Show"} AI Reasoning
+                  </span>
+                </div>
+              </DropdownMenuItem>
+              
               <DropdownMenuItem onClick={() => setTheme(theme === "light" ? "dark" : "light")} className="cursor-pointer">
                 <div className="flex items-center gap-2">
                   {theme === "light" ? 

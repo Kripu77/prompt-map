@@ -14,15 +14,18 @@ import {
   Clock,
   Search,
   ChevronDown,
+  Brain,
 } from "lucide-react";
 import { formatDistanceToNow, isToday, isYesterday, differenceInDays, differenceInMinutes, differenceInHours } from "date-fns";
 import { useMindmapStore } from "@/lib/stores/mindmap-store";
+import { useReasoningPanelStore } from "@/lib/stores/reasoning-panel-store";
 import { useSidebarStore } from "@/lib/stores/sidebar-store";
 import { usePathname } from "next/navigation";
 import { Input } from "../../ui/input";
 import { setSidebarHandler } from "../../layout/header";
 
-// Custom close sidebar icon component
+
+
 function SidebarCloseIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -44,7 +47,6 @@ function SidebarCloseIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-// Interface to group threads by time periods
 interface GroupedThreads {
   today: Thread[];
   yesterday: Thread[];
@@ -69,32 +71,26 @@ export function ThreadsSidebar() {
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const loaderRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const hasFetchedRef = useRef<boolean>(false); // Track if we've already fetched threads
+  const hasFetchedRef = useRef<boolean>(false);
   const { threads, isLoading, selectedThread, loadThread, deleteThread, fetchThreads } = useThreads();
   const { isOpen, setIsOpen } = useSidebarStore();
-  const { mindmapData, setMindmapData } = useMindmapStore();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: session, status } = useSession();
+  const { mindmapData, setMindmapData, setPrompt, setIsLoading, setError } = useMindmapStore();
+  const { setReasoningContent, showForSavedThread } = useReasoningPanelStore();
+  const { status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const pathname = usePathname();
 
-  // Register the sidebar handler for backward compatibility
   useEffect(() => {
     setSidebarHandler(setIsOpen);
-    // Return a cleanup function
     return () => {
-      // Use a no-op function instead of null
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const noop = (_value: boolean) => { /* empty function */ };
+      const noop = () => { /* empty function */ };
       setSidebarHandler(noop);
     };
   }, [setIsOpen]);
 
-  // Refresh threads when the sidebar is opened or when mindmap data changes
+
   useEffect(() => {
-    // Only fetch if the user is authenticated and the sidebar is open
     if (isAuthenticated && isOpen && !isLoading) {
-      // If threads are empty or we haven't fetched yet, fetch them
       if (threads.length === 0 || !hasFetchedRef.current) {
         fetchThreads();
         hasFetchedRef.current = true;
@@ -102,23 +98,18 @@ export function ThreadsSidebar() {
     }
   }, [isOpen, isAuthenticated, fetchThreads, threads.length, isLoading]);
 
-  // Check for authentication status changes
+
   useEffect(() => {
-    // Reset fetched state when auth status changes
     if (status === 'unauthenticated') {
       hasFetchedRef.current = false;
     }
   }, [status]);
 
-  // Check for mindmap data changes to trigger a refresh
-  // This will ensure new mindmaps appear immediately
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     
-    // If sidebar is open and we have mindmap data, wait a bit and then refresh
-    // The slight delay ensures the backend has time to save the data
     if (isAuthenticated && isOpen && mindmapData) {
-      // Reset the fetched flag to allow a refresh
+
       hasFetchedRef.current = false;
       
       timeoutId = setTimeout(() => {
@@ -131,7 +122,8 @@ export function ThreadsSidebar() {
     };
   }, [mindmapData, isAuthenticated, isOpen, fetchThreads]);
 
-  // Close sidebar by default and on mobile
+
+
   useEffect(() => {
     const checkSize = () => {
       if (window.innerWidth < 768) {
@@ -139,22 +131,20 @@ export function ThreadsSidebar() {
       }
     };
     
-    // Check on mount
+
     checkSize();
     
-    // Listen for resize events
     window.addEventListener('resize', checkSize);
     return () => window.removeEventListener('resize', checkSize);
   }, [setIsOpen]);
 
-  // Calculate dynamic display limit based on screen height
+
   useEffect(() => {
     if (typeof window !== 'undefined' && isOpen) {
-      // Estimate: each mindmap item is approximately 60px tall
-      const availableHeight = window.innerHeight - 150; // Subtract header height and padding
+      const availableHeight = window.innerHeight - 150;
       const estimatedItemsPerScreen = Math.max(6, Math.floor(availableHeight / 60));
       
-      // Set initial limit to fit the screen plus a few more
+
       setDisplayLimit(estimatedItemsPerScreen + 4);
     }
   }, [isOpen]);
@@ -276,10 +266,29 @@ export function ThreadsSidebar() {
   }
 
   const handleThreadClick = async (thread: Thread) => {
-    const loadedThread = await loadThread(thread.id);
-    if (loadedThread && loadedThread.content) {
-      setMindmapData(loadedThread.content);
-      setIsOpen(false); // Close sidebar after selecting
+
+    try {
+      const loadedThread = await loadThread(thread.id);
+      if (loadedThread && loadedThread.content) {
+        setMindmapData(loadedThread.content);
+        setPrompt(loadedThread.title);
+        setIsLoading(false);
+        setError(null);
+        setIsOpen(false);
+        
+        // Restore reasoning data if available
+        if (loadedThread.reasoning) {
+          setReasoningContent(loadedThread.reasoning);
+          showForSavedThread();
+        } else {
+          setReasoningContent('');
+        }
+        
+        console.log('Thread loaded successfully:', loadedThread.title);
+      }
+    } catch (error) {
+      console.error('Error loading thread:', error);
+      setError('Failed to load mindmap');
     }
   };
 
@@ -292,7 +301,7 @@ export function ThreadsSidebar() {
     }
   };
 
-  // Format time in a more human-readable way like "3 minutes ago"
+
   const formatTime = (date: Date) => {
     const now = new Date();
     const minutesDiff = differenceInMinutes(now, date);
@@ -307,19 +316,36 @@ export function ThreadsSidebar() {
     }
   };
 
-  // Function to render each thread item
+
   const renderThreadItem = (thread: Thread) => (
     <div
       key={thread.id}
       className={cn(
-        "w-full py-2 px-3 text-left hover:bg-muted/50 cursor-pointer group transition-colors",
+
+        "w-full py-2 px-3 text-left hover:bg-muted/50 cursor-pointer group transition-colors relative",
+
         selectedThread?.id === thread.id && "bg-muted/30"
       )}
       onClick={() => handleThreadClick(thread)}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <h3 className="text-sm font-normal line-clamp-1">{thread.title}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-normal line-clamp-1 flex-1">{thread.title}</h3>
+            {thread.reasoning && (
+              <div className="relative group/tooltip">
+                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 border border-primary/20 animate-pulse hover:animate-none transition-all duration-3000 hover:bg-primary/20 hover:scale-110">
+                  <Brain className="h-3 w-3 text-primary" />
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-popover border border-border rounded-md shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
+                  <div className="text-xs font-medium text-popover-foreground">
+                    💭 View AI Thinking
+                  </div>
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-border"></div>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex items-center text-xs text-muted-foreground/80 mt-0.5">
             <Clock className="mr-1 h-3 w-3 inline" />
             {formatTime(new Date(thread.updatedAt))}
@@ -337,7 +363,6 @@ export function ThreadsSidebar() {
     </div>
   );
 
-  // Function to render a date group with its threads
   const renderDateGroup = (title: string, threads: Thread[]) => {
     if (threads.length === 0) return null;
     
@@ -355,7 +380,6 @@ export function ThreadsSidebar() {
 
   return (
     <>
-      {/* Dark overlay for mobile only */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 md:hidden"
@@ -421,7 +445,6 @@ export function ThreadsSidebar() {
                   {renderDateGroup("Previous 30 Days", groupedThreads.previous30Days)}
                   {renderDateGroup("Older", groupedThreads.older)}
                   
-                  {/* Loading indicator for more threads */}
                   {hasMoreThreads && (
                     <div 
                       ref={loaderRef} 
@@ -451,7 +474,6 @@ export function ThreadsSidebar() {
             </div>
           </ScrollArea>
           
-          {/* Fade out effect at the bottom when there are more threads */}
           {hasMoreThreads && !isLoadingMore && (
             <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none bg-gradient-to-t from-background to-transparent"></div>
           )}
@@ -459,4 +481,5 @@ export function ThreadsSidebar() {
       </div>
     </>
   );
-} 
+}
+
