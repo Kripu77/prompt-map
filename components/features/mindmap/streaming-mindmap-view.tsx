@@ -69,7 +69,11 @@ export function StreamingMindmapView({
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 100, opacity: 0, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed bottom-6 right-6 z-50 w-80 max-w-sm"
+            className={cn(
+              "fixed z-50 w-80 max-w-sm",
+              "bottom-40 left-4 right-4 mx-auto",
+              "md:bottom-6 md:right-6 md:left-auto md:mx-0"
+            )}
           >
             <div className="bg-background/95 backdrop-blur-xl rounded-lg border border-border shadow-2xl overflow-hidden">
               <div className="px-4 py-3 border-b border-border/50">
@@ -108,10 +112,10 @@ export function StreamingMindmapView({
                       transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                       className="text-sm font-medium text-foreground truncate"
                     >
-                      AI is thinking
+                      AI is rendering your mindmap
                     </motion.div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      Creating your mindmap
+                    <div className="text-xs text-muted-foreground/80">
+                      {progress.wordCount} words processed
                     </div>
                   </div>
                   
@@ -179,7 +183,7 @@ export function StreamingMindmapView({
               <div className="px-4 py-2 bg-secondary/30 border-t border-border/50">
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-muted-foreground">
-                    {isStreaming ? "Streaming..." : "Processing"}
+                    {isStreaming ? "Generating..." : "Processing"}
                   </div>
                   
                   <div className="flex items-center gap-1">
