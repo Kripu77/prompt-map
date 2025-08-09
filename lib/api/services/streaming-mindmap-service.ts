@@ -66,7 +66,7 @@ export class StreamingMindmapService {
       const result = await streamingLLMClient.streamText({
         messages,
         config: {
-          temperature: 0.7,
+          temperature: 0.1,
           maxTokens: 1200,
           includeReasoning: true,
           tools,

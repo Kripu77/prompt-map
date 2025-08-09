@@ -39,7 +39,7 @@ export interface LLMError {
 
 const DEFAULT_CONFIG: Required<Omit<LLMConfig, 'tools'>> & Pick<LLMConfig, 'tools'> = {
   model: "openai/gpt-4o-mini", // Switch to a model that supports tools
-  temperature: 0.7,
+  temperature: 0.1,
   maxTokens: 2000,
   topP: 0.9,
   frequencyPenalty: 0,

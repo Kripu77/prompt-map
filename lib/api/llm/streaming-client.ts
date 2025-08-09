@@ -18,7 +18,7 @@ export interface StreamingRequest {
 
 const DEFAULT_STREAMING_CONFIG: Required<Omit<StreamingConfig, 'tools'>> & Pick<StreamingConfig, 'tools'> = {
   model: "deepseek/deepseek-r1",
-  temperature: 0.7,
+  temperature: 0.1,
   maxTokens: 1200,
   topP: 0.9,
   includeReasoning: true,
