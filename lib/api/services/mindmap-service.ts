@@ -20,6 +20,7 @@ export interface MindmapGenerationOptions {
   timeConstraint?: 'quick' | 'detailed' | 'comprehensive';
   format?: 'academic' | 'practical' | 'creative';
   useChainOfThought?: boolean;
+  customDate?: Date;
 }
 
 export interface TopicShiftAnalysis {
@@ -60,7 +61,9 @@ export class MindmapService {
           payload.context.originalPrompt || payload.prompt,
           payload.context.existingMindmap as string,
           payload.prompt,
-          payload.context.previousPrompts || []
+          payload.context.previousPrompts || [],
+          undefined,
+          options.customDate
         );
       } else {
         // Generate initial mindmap
@@ -76,12 +79,12 @@ export class MindmapService {
           enhancedPrompt = addChainOfThoughtPrompting(enhancedPrompt);
         }
         
-        messages = createInitialMindmapPrompt(enhancedPrompt);
+        messages = createInitialMindmapPrompt(enhancedPrompt, undefined, options.customDate);
       }
       
       // Configure tools - use real web search if available
       const tools = enableWebSearch && hasExaKey ? {
-        [webSearchTool.id]: webSearchTool
+        ['search.web']: webSearchTool
       } : undefined;
       
       if (enableWebSearch && !hasExaKey) {
@@ -116,7 +119,7 @@ export class MindmapService {
   /**
    * Analyze if a follow-up question represents a topic shift
    */
-  async analyzeTopicShift(payload: PromptPayload): Promise<TopicShiftResponse> {
+  async analyzeTopicShift(payload: PromptPayload, options?: { customDate?: Date }): Promise<TopicShiftResponse> {
     try {
       // Extract current topic from existing mindmap
       const currentTopic = this.extractTopicFromMindmap(
@@ -134,7 +137,8 @@ export class MindmapService {
       const messages = createTopicShiftPrompt(
         currentTopic,
         payload.context?.originalPrompt || '',
-        payload.prompt
+        payload.prompt,
+        options?.customDate
       );
       
       const analysis = await llmClient.generateStructuredResponse<TopicShiftAnalysis>(

@@ -13,7 +13,7 @@ import type { CoreTool } from 'ai';
 export class StreamingMindmapService {
   async streamMindmapGeneration(
     payload: PromptPayload,
-    options: MindmapGenerationOptions & { enableWebSearch?: boolean } = {}
+    options: MindmapGenerationOptions & { enableWebSearch?: boolean; customDate?: Date } = {}
   ) {
     try {
       // Auto-detect if web search should be enabled based on prompt content
@@ -36,7 +36,9 @@ export class StreamingMindmapService {
           payload.context.originalPrompt || payload.prompt,
           payload.context.existingMindmap as string,
           payload.prompt,
-          payload.context.previousPrompts || []
+          payload.context.previousPrompts || [],
+          undefined,
+          options.customDate
         );
       } else {
         let enhancedPrompt = payload.prompt;
@@ -49,7 +51,7 @@ export class StreamingMindmapService {
           enhancedPrompt = addChainOfThoughtPrompting(enhancedPrompt);
         }
         
-        messages = createInitialMindmapPrompt(enhancedPrompt);
+        messages = createInitialMindmapPrompt(enhancedPrompt, undefined, options.customDate);
       }
       
       // Configure tools - use real web search if available, otherwise undefined

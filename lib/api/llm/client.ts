@@ -9,7 +9,7 @@ export interface LLMConfig {
   topP?: number;
   frequencyPenalty?: number;
   presencePenalty?: number;
-  tools?: Record<string, any>;
+  tools?: import('ai').ToolSet;
 }
 
 export interface LLMRequest {

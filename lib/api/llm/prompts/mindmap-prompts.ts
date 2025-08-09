@@ -18,7 +18,12 @@ const CURRENCY_FRAMEWORK = {
   static: [
     "history", "theory", "principle", "concept", "definition", 
     "classic", "fundamental", "basic", "traditional", "established"
-  ]
+  ],
+  linkGuidance: {
+    current: "ALWAYS include source links using [text](URL) format",
+    static: "Include authoritative source links when available",
+    mixed: "ALWAYS include source links for current information"
+  }
 };
 
 const CORE_PRINCIPLES = `
@@ -27,6 +32,8 @@ const CORE_PRINCIPLES = `
 **BALANCE**: Even information distribution
 **ACTIONABILITY**: Practical, applicable insights
 **CURRENCY**: Current, verified information
+**INTERACTIVITY**: Relevant links for deeper exploration
+**ATTRIBUTION**: Proper citation of web sources
 `;
 
 const FORMAT_RULES = `
@@ -36,6 +43,8 @@ const FORMAT_RULES = `
 - Subtopics: ### (2-4 per main)
 - NO bullets, lists, or other formatting
 - Concise but descriptive headers
+- Include relevant links using markdown format: [text](URL)
+- For web search results, always include source links
 `;
 
 function analyzeCurrency(text: string): InfoType {
@@ -53,15 +62,18 @@ function getWebSearchGuidance(infoType: InfoType): string {
     case 'current':
       return `🔍 **WEB SEARCH MANDATORY**: You HAVE live internet access - ALWAYS search first for current information, then blend with knowledge.
 **Critical**: Use web search tool immediately for latest data, trends, and developments. You CAN access real-time information.
-**Integration**: Lead with current data, support with foundational concepts.`;
+**Integration**: Lead with current data, support with foundational concepts.
+**Links**: ALWAYS include source links from web search results using markdown format [text](URL). These links make the mindmap interactive.`;
     case 'static':
       return `🧠 **KNOWLEDGE-BASED**: Use existing knowledge primarily.
 **Web Search**: You HAVE web search access - use it if unsure about recent developments or accuracy.
-**Integration**: Include recent developments if relevant.`;
+**Integration**: Include recent developments if relevant.
+**Links**: When using web search, ALWAYS include source links using markdown format [text](URL) to make the mindmap interactive.`;
     case 'mixed':
       return `🔄 **HYBRID APPROACH**: You HAVE live internet access - ALWAYS use web search for current aspects, use knowledge for fundamentals.
 **Critical**: When in doubt about currency or accuracy, use web search tool. You CAN get real-time data.
-**Integration**: Balance current data (40%) with established knowledge (60%).`;
+**Integration**: Balance current data (40%) with established knowledge (60%).
+**Links**: ALWAYS include source links from web search results using markdown format [text](URL). These links make the mindmap interactive and provide attribution.`;
   }
 }
 
@@ -70,23 +82,24 @@ function getThinkingProcess(mode: MindmapMode): string {
 1. **Topic Analysis**: Core aspects identification
 2. **Currency Assessment**: Current vs. static information needs
 3. **Information Strategy**: Web search decision + knowledge integration
-4. **Structure Planning**: Hierarchical organization
-5. **Content Selection**: Essential points prioritization`;
+4. **Link Integration**: Include source URLs from web search as markdown links
+5. **Structure Planning**: Hierarchical organization
+6. **Content Selection**: Essential points prioritization`;
 
   if (mode === 'lite') {
     return base + `
-6. **Lite Optimization**: Focus on 3-5 main branches, 2 subtopics each`;
+7. **Lite Optimization**: Focus on 3-5 main branches, 2 subtopics each`;
   }
   
   return base + `
-6. **Comprehensive Coverage**: 5-7 main branches, 3-4 subtopics each
-7. **Quality Assurance**: Balance, clarity, and completeness check`;
+7. **Comprehensive Coverage**: 5-7 main branches, 3-4 subtopics each
+8. **Quality Assurance**: Balance, clarity, and completeness check`;
 }
 
 // SYSTEM PROMPTS
 
-export function getMindmapSystemPrompt(mode: MindmapMode = 'comprehensive'): string {
-  const now = new Date();
+export function getMindmapSystemPrompt(mode: MindmapMode = 'comprehensive', customDate?: Date): string {
+  const now = customDate || new Date();
   const currentDateTime = now.toLocaleString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -132,6 +145,13 @@ ${getWebSearchGuidance('mixed')}
 3. **Knowledge Integration**: Provide context, explanations, frameworks from your knowledge
 4. **Synthesis**: Weave together for comprehensive, current coverage
 5. **Verification**: Cross-reference for accuracy and relevance
+6. **Link Integration**: ALWAYS include source links from web search results using markdown format [text](URL)
+
+**INTERACTIVE LINKS REQUIREMENT**:
+- For each web search result you use, include the source URL as a markdown link
+- Format: [Descriptive Text](URL) - never use raw URLs
+- Place links directly in the mindmap headers where the information is used
+- Links make the mindmap interactive and provide attribution to sources
 </web_search_tool>
 
 <core_principles>
@@ -161,10 +181,29 @@ ${FORMAT_RULES}
 </quality_standards>`;
 }
 
-function getTopicShiftSystemPrompt(): string {
+function getTopicShiftSystemPrompt(customDate?: Date): string {
+  const now = customDate || new Date();
+  const currentDate = now.toLocaleString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
+  const currentYear = now.getFullYear();
+
   return `<role>
 Expert at analyzing follow-up questions for topic shift detection.
 </role>
+
+<current_date>
+${currentDate}
+</current_date>
+
+<current_year>
+${currentYear}
+</current_year>
 
 <decision_criteria>
 **TOPIC SHIFT** (new mindmap needed):
@@ -209,13 +248,13 @@ Expert at analyzing follow-up questions for topic shift detection.
 
 // MINDMAP GENERATION PROMPTS
 
-export function createInitialMindmapPrompt(topic: string, mode: MindmapMode = 'comprehensive'): CoreMessage[] {
+export function createInitialMindmapPrompt(topic: string, mode: MindmapMode = 'comprehensive', customDate?: Date): CoreMessage[] {
   const infoType = analyzeCurrency(topic);
   const webSearchGuidance = getWebSearchGuidance(infoType);
   const thinkingProcess = getThinkingProcess(mode);
 
   return [
-    createSystemMessage(getMindmapSystemPrompt(mode)),
+    createSystemMessage(getMindmapSystemPrompt(mode, customDate)),
     createUserMessage(`<task>
 Create a ${mode} mindmap for: "${topic}"
 </task>
@@ -224,6 +263,12 @@ Create a ${mode} mindmap for: "${topic}"
 ${webSearchGuidance}
 
 **CRITICAL INSTRUCTION**: If this topic involves current information, recent developments, or you're unsure about accuracy, USE THE WEB SEARCH TOOL IMMEDIATELY before creating the mindmap. You HAVE live internet access and are NOT limited by training data cutoffs.
+
+**LINK INTEGRATION REQUIREMENT**:
+- For each web search result you use, include the source URL as a markdown link
+- Format: [Descriptive Text](URL) - never use raw URLs
+- Place links directly in the mindmap headers where the information is used
+- Links make the mindmap interactive and provide attribution to sources
 </information_strategy>
 
 <thinking_process>
@@ -239,6 +284,8 @@ ${mode === 'lite' ?
 - Current information when relevant (use web search if needed)
 - Practical applications included
 - Accurate dates and temporal references
+- Include relevant links using markdown format [text](URL)
+- For web search results, ALWAYS include source links to make the mindmap interactive
 </requirements>`),
     
     // Enhanced few-shot examples
@@ -246,27 +293,27 @@ ${mode === 'lite' ?
 
 ## Content Marketing
 ### ${mode === 'lite' ? 'Blog Strategy' : 'Content Planning & Strategy'}
-### ${mode === 'lite' ? 'Social Media' : 'Multi-Platform Content Distribution'}
-${mode === 'comprehensive' ? '### SEO Content Optimization\n### Content Performance Analytics' : ''}
+### ${mode === 'lite' ? 'Social Media' : 'Multi-Platform Content Distribution [Best Practices](https://buffer.com/library/social-media-marketing-strategy/)'}
+${mode === 'comprehensive' ? '### SEO Content Optimization [Latest Techniques](https://moz.com/blog/category/seo)\n### Content Performance Analytics' : ''}
 
 ## Paid Advertising
-### ${mode === 'lite' ? 'Google Ads' : 'Search Engine Marketing (SEM)'}
-### ${mode === 'lite' ? 'Social Ads' : 'Social Media Advertising Platforms'}
-${mode === 'comprehensive' ? '### Display & Retargeting Campaigns\n### Ad Performance Optimization' : ''}
+### ${mode === 'lite' ? 'Google Ads' : 'Search Engine Marketing (SEM) [Google Ads Guide](https://ads.google.com/home/resources/)'}
+### ${mode === 'lite' ? 'Social Ads' : 'Social Media Advertising Platforms [Facebook Ads](https://www.facebook.com/business/ads)'}
+${mode === 'comprehensive' ? '### Display & Retargeting Campaigns [Best Practices](https://www.wordstream.com/blog/ws/2015/10/01/remarketing-strategies)\n### Ad Performance Optimization' : ''}
 
 ## Analytics & Optimization
-### ${mode === 'lite' ? 'Key Metrics' : 'Conversion Tracking & Attribution'}
-### ${mode === 'lite' ? 'A/B Testing' : 'Advanced Analytics & Reporting'}
-${mode === 'comprehensive' ? '### Customer Journey Analysis\n### ROI Measurement & Optimization' : ''}
+### ${mode === 'lite' ? 'Key Metrics' : 'Conversion Tracking & Attribution [Google Analytics](https://analytics.google.com/)'}
+### ${mode === 'lite' ? 'A/B Testing' : 'Advanced Analytics & Reporting [A/B Testing Guide](https://vwo.com/ab-testing/)'}
+${mode === 'comprehensive' ? '### Customer Journey Analysis\n### ROI Measurement & Optimization [ROI Calculator](https://www.hubspot.com/roi-calculator)' : ''}
 
 ${mode === 'comprehensive' ? `## Email Marketing
-### Automation & Segmentation
+### Automation & Segmentation [Mailchimp Guide](https://mailchimp.com/resources/email-marketing-strategy/)
 ### Personalization Strategies
-### Deliverability & Compliance
+### Deliverability & Compliance [GDPR Overview](https://gdpr.eu/email-marketing/)
 
 ## Emerging Trends
-### AI-Powered Marketing Tools
-### Voice Search Optimization
+### AI-Powered Marketing Tools [AI Marketing Guide](https://www.marketingaiinstitute.com/)
+### Voice Search Optimization [Voice SEO Tips](https://backlinko.com/optimize-for-voice-search)
 ### Privacy-First Marketing Strategies` : ''}`),
     
     createUserMessage(`Now create a ${mode} mindmap for: "${topic}"`)
@@ -278,13 +325,14 @@ export function createFollowUpMindmapPrompt(
   currentMindmap: string,
   followUpQuestion: string,
   previousPrompts: string[],
-  mode: MindmapMode = 'comprehensive'
+  mode: MindmapMode = 'comprehensive',
+  customDate?: Date
 ): CoreMessage[] {
   const infoType = analyzeCurrency(followUpQuestion);
   const webSearchGuidance = getWebSearchGuidance(infoType);
 
   return [
-    createSystemMessage(getMindmapSystemPrompt(mode)),
+    createSystemMessage(getMindmapSystemPrompt(mode, customDate)),
     createUserMessage(`<context>
 Original mindmap for "${originalPrompt}":
 ${currentMindmap}
@@ -298,12 +346,19 @@ ${webSearchGuidance}
 
 **CRITICAL INSTRUCTION**: If this follow-up involves current information, recent developments, or you're unsure about accuracy, USE THE WEB SEARCH TOOL IMMEDIATELY before updating the mindmap. You HAVE live internet access and are NOT limited by training data cutoffs.
 
+**LINK INTEGRATION REQUIREMENT**:
+- For each web search result you use, include the source URL as a markdown link
+- Format: [Descriptive Text](URL) - never use raw URLs
+- Place links directly in the mindmap headers where the information is used
+- Links make the mindmap interactive and provide attribution to sources
+
 **INTEGRATION APPROACH**:
 1. **Analyze**: How does follow-up relate to existing content?
 2. **Search First**: Use web search if current information is needed - YOU HAVE LIVE ACCESS
-3. **Enhance**: Add, expand, reorganize, or refine sections
-4. **Balance**: Maintain overall structure and flow
-5. **Verify**: Ensure coherence with original topic
+3. **Link Integration**: Include source URLs from web search as markdown links [text](URL)
+4. **Enhance**: Add, expand, reorganize, or refine sections
+5. **Balance**: Maintain overall structure and flow
+6. **Verify**: Ensure coherence with original topic
 </enhancement_strategy>
 
 <update_methods>
@@ -320,6 +375,8 @@ ${webSearchGuidance}
 - Balanced information distribution?
 - Clear hierarchical structure?
 - ${mode === 'lite' ? 'Stays within lite constraints?' : 'Comprehensive coverage maintained?'}
+- Are relevant links included from web search results?
+- Are links formatted correctly using [text](URL) syntax?
 </quality_check>`),
   ];
 }
@@ -329,10 +386,11 @@ ${webSearchGuidance}
 export function createTopicShiftPrompt(
   currentTopic: string,
   originalPrompt: string,
-  followUpQuestion: string
+  followUpQuestion: string,
+  customDate?: Date
 ): CoreMessage[] {
   return [
-    createSystemMessage(getTopicShiftSystemPrompt()),
+    createSystemMessage(getTopicShiftSystemPrompt(customDate)),
     createUserMessage(`<analysis>
 **Current Topic**: "${currentTopic}"
 **Original Prompt**: "${originalPrompt}"  
@@ -359,14 +417,15 @@ export function createTopicShiftPrompt(
 export function createNewTopicMindmapPrompt(
   originalTopic: string,
   newQuestion: string,
-  mode: MindmapMode = 'comprehensive'
+  mode: MindmapMode = 'comprehensive',
+  customDate?: Date
 ): CoreMessage[] {
   const infoType = analyzeCurrency(newQuestion);
   const webSearchGuidance = getWebSearchGuidance(infoType);
   const thinkingProcess = getThinkingProcess(mode);
 
   return [
-    createSystemMessage(getMindmapSystemPrompt(mode)),
+    createSystemMessage(getMindmapSystemPrompt(mode, customDate)),
     createUserMessage(`<task>
 Create a ${mode} mindmap for NEW TOPIC: "${newQuestion}"
 </task>
@@ -379,6 +438,12 @@ Previous topic was: "${originalTopic}" (now starting fresh)
 ${webSearchGuidance}
 
 **CRITICAL INSTRUCTION**: If this new topic involves current information, recent developments, or you're unsure about accuracy, USE THE WEB SEARCH TOOL IMMEDIATELY before creating the mindmap. You HAVE live internet access and are NOT limited by training data cutoffs.
+
+**LINK INTEGRATION REQUIREMENT**:
+- For each web search result you use, include the source URL as a markdown link
+- Format: [Descriptive Text](URL) - never use raw URLs
+- Place links directly in the mindmap headers where the information is used
+- Links make the mindmap interactive and provide attribution to sources
 </information_strategy>
 
 <thinking_process>
@@ -392,6 +457,8 @@ ${thinkingProcess}
 - Current information integration when relevant (use web search if needed)
 - Clear, descriptive title
 - Accurate dates and temporal references
+- Include relevant links using markdown format [text](URL)
+- For web search results, ALWAYS include source links to make the mindmap interactive
 </fresh_start_requirements>`),
   ];
 }
