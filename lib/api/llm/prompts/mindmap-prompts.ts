@@ -45,6 +45,10 @@ const FORMAT_RULES = `
 - Concise but descriptive headers
 - Include relevant links using markdown format: [text](URL)
 - For web search results, always include source links
+- Support for rich text formatting within headers: **bold**, *italic*, ~~strikethrough~~, \`code\`
+- Support for mathematical expressions using KaTeX: $x = {-b \pm \sqrt{b^2-4ac} \over 2a}$
+- Support for code blocks with syntax highlighting
+- Support for tables to display structured data
 `;
 
 function analyzeCurrency(text: string): InfoType {
@@ -292,8 +296,10 @@ ${mode === 'lite' ?
     createAssistantMessage(`# ${mode === 'lite' ? 'Digital Marketing Essentials' : 'Comprehensive Digital Marketing Strategy'}
 
 ## Content Marketing
-### ${mode === 'lite' ? 'Blog Strategy' : 'Content Planning & Strategy'}
+### ${mode === 'lite' ? 'Blog Strategy' : 'Content Planning & **Strategy**'}
 ### ${mode === 'lite' ? 'Social Media' : 'Multi-Platform Content Distribution [Best Practices](https://buffer.com/library/social-media-marketing-strategy/)'}
+### ${mode === 'comprehensive' ? 'Content ROI Formula $ROI = \frac{(Revenue - Cost)}{Cost} \times 100\%$' : ''}
+### ${mode === 'comprehensive' ? 'Performance Data with Table Support' : ''}
 ${mode === 'comprehensive' ? '### SEO Content Optimization [Latest Techniques](https://moz.com/blog/category/seo)\n### Content Performance Analytics' : ''}
 
 ## Paid Advertising
@@ -305,6 +311,7 @@ ${mode === 'comprehensive' ? '### Display & Retargeting Campaigns [Best Practice
 ### ${mode === 'lite' ? 'Key Metrics' : 'Conversion Tracking & Attribution [Google Analytics](https://analytics.google.com/)'}
 ### ${mode === 'lite' ? 'A/B Testing' : 'Advanced Analytics & Reporting [A/B Testing Guide](https://vwo.com/ab-testing/)'}
 ${mode === 'comprehensive' ? '### Customer Journey Analysis\n### ROI Measurement & Optimization [ROI Calculator](https://www.hubspot.com/roi-calculator)' : ''}
+### ${mode === 'comprehensive' ? 'Tracking Code Example with Syntax Highlighting' : ''}
 
 ${mode === 'comprehensive' ? `## Email Marketing
 ### Automation & Segmentation [Mailchimp Guide](https://mailchimp.com/resources/email-marketing-strategy/)
