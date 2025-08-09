@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Brain, X, Search, ExternalLink, Globe, Lightbulb, Target, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { MindmapMode } from "@/lib/types/settings"
 
 interface ToolCall {
   id: string
@@ -316,7 +317,8 @@ interface AIReasoningPanelProps {
   isVisible: boolean
   onToggleVisibility: () => void
   topic?: string
-  className?: string
+  className?: string,
+  mode?: MindmapMode
 }
 
 export function AIReasoningPanel({
@@ -325,6 +327,7 @@ export function AIReasoningPanel({
   onToggleVisibility,
   className,
   topic,
+  mode,
 }: AIReasoningPanelProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -590,7 +593,17 @@ export function AIReasoningPanel({
                 <Brain className="h-3.5 w-3.5 text-white" />
               </div>
               <div>
-                <CardTitle className="text-sm font-semibold">AI Reasoning</CardTitle>
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  AI Reasoning
+                  {mode && (
+                    <span className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-full border",
+                      mode === 'lite' ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' : 'bg-primary/10 text-primary border-primary/30'
+                    )}>
+                      {mode === 'lite' ? 'Lite' : 'Comprehensive'}
+                    </span>
+                  )}
+                </CardTitle>
                 {topic && <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px] sm:max-w-none">{topic}</div>}
               </div>
             </div>

@@ -5,8 +5,10 @@ import {
   enhancePromptWithContext,
   addChainOfThoughtPrompting
 } from '../llm/prompts/mindmap-prompts';
+import { webSearchTool } from '@/lib/tools/web-search-tool';
 import type { PromptPayload } from '@/types/api';
 import type { MindmapGenerationOptions } from './mindmap-service';
+import type { CoreTool } from 'ai';
 
 export class StreamingMindmapService {
   async streamMindmapGeneration(
@@ -14,7 +16,18 @@ export class StreamingMindmapService {
     options: MindmapGenerationOptions & { enableWebSearch?: boolean } = {}
   ) {
     try {
-      const enableWebSearch = false;
+      // Auto-detect if web search should be enabled based on prompt content
+      const promptText = payload.prompt.toLowerCase();
+      const hasCurrentKeywords = [
+        'latest', 'recent', 'current', 'today', 'now', 'breaking', 'update', 
+        'trending', '2025', '2024', 'news', 'weather', 'stock', 'market'
+      ].some(keyword => promptText.includes(keyword));
+      
+      // Enable web search by default, or if current keywords detected, or if explicitly requested
+      const enableWebSearch = options.enableWebSearch ?? hasCurrentKeywords ?? true;
+      const hasExaKey = !!process.env.EXA_API_KEY;
+      
+      console.log(`Web search enabled: ${enableWebSearch}, EXA_API_KEY present: ${hasExaKey}`);
       
       let messages;
       
@@ -39,6 +52,14 @@ export class StreamingMindmapService {
         messages = createInitialMindmapPrompt(enhancedPrompt);
       }
       
+      // Configure tools - use real web search if available, otherwise undefined
+      const tools: Record<string, CoreTool> | undefined = enableWebSearch && hasExaKey ? {
+        'search.web': webSearchTool
+      } : undefined;
+      
+      if (enableWebSearch && !hasExaKey) {
+        console.warn('Web search requested but EXA_API_KEY not configured. Add EXA_API_KEY to environment variables.');
+      }
       
       const result = await streamingLLMClient.streamText({
         messages,
@@ -46,24 +67,7 @@ export class StreamingMindmapService {
           temperature: 0.7,
           maxTokens: 1200,
           includeReasoning: true,
-          tools: enableWebSearch ? {
-            web_search: {
-              description: 'Search the web for current information',
-              parameters: {
-                type: 'object',
-                properties: {
-                  query: {
-                    type: 'string',
-                    description: 'The search query'
-                  }
-                },
-                required: ['query']
-              },
-              execute: async ({ query }: { query: string }) => {
-                return `Search results for: ${query}`;
-              }
-            }
-          } : undefined,
+          tools,
         }
       });
       return result;

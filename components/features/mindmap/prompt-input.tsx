@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useRef, KeyboardEvent, useEffect } from "react";
 import { Textarea } from "../../ui/textarea";
 import { Button } from "../../ui/button";
 import { Loader2, ArrowRightCircle, CornerDownLeft, Brain, ChevronDown } from "lucide-react";
@@ -33,6 +33,12 @@ export function PromptInput({
 }: PromptInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [localMode, setLocalMode] = useState<MindmapMode>(mode);
+
+  // Sync localMode when parent updates settings
+  useEffect(() => {
+    setLocalMode(mode);
+  }, [mode]);
 
   const handleSubmit = () => {
     const trimmedValue = value.trim();
@@ -54,6 +60,7 @@ export function PromptInput({
 
 
   const handleModeSelect = (newMode: MindmapMode) => {
+    setLocalMode(newMode);
     if (onModeChange) {
       onModeChange(newMode);
     }
@@ -95,23 +102,23 @@ export function PromptInput({
                 className={cn(
                   "h-8 px-2 text-xs font-medium rounded-lg border transition-all duration-200",
                   "hover:bg-background/80 focus:ring-1 focus:ring-primary/30",
-                  mode === 'comprehensive' 
+                  localMode === 'comprehensive' 
                     ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/15" 
                     : "bg-muted/50 text-muted-foreground border-muted/30 hover:bg-muted/70"
                 )}
                 disabled={loading || disabled}
               >
                 <Brain className="h-3 w-3 mr-1" />
-                <span>{mode === 'comprehensive' ? 'Comprehensive' : 'Lite'}</span>
+                <span>{localMode === 'comprehensive' ? 'Comprehensive' : 'Lite'}</span>
                 <ChevronDown className="h-3 w-3 ml-1" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-40">
+            <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-40 mb-3">
               <DropdownMenuItem 
                 onClick={() => handleModeSelect('comprehensive')}
                 className={cn(
                   "cursor-pointer",
-                  mode === 'comprehensive' && "bg-primary/10 text-primary"
+                  localMode === 'comprehensive' && "bg-primary/10 text-primary"
                 )}
               >
                 <Brain className="h-4 w-4 mr-2" />
@@ -124,7 +131,7 @@ export function PromptInput({
                 onClick={() => handleModeSelect('lite')}
                 className={cn(
                   "cursor-pointer",
-                  mode === 'lite' && "bg-primary/10 text-primary"
+                  localMode === 'lite' && "bg-primary/10 text-primary"
                 )}
               >
                 <Brain className="h-4 w-4 mr-2" />
@@ -145,7 +152,7 @@ export function PromptInput({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
+          placeholder={localMode === 'lite' ? "Quick: 3-5 main branches, 2 subtopics each" : placeholder}
           disabled={loading || disabled}
           className={cn(
             "min-h-[50px] h-12 focus-visible:ring-0 border-0 shadow-none resize-none",

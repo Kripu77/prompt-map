@@ -7,6 +7,7 @@ import {
   enhancePromptWithContext,
   addChainOfThoughtPrompting
 } from '../llm/prompts/mindmap-prompts';
+import { webSearchTool } from '@/lib/tools/web-search-tool';
 import type { 
   PromptPayload, 
   MindmapResponse, 
@@ -35,9 +36,22 @@ export class MindmapService {
    */
   async generateMindmap(
     payload: PromptPayload,
-    options: MindmapGenerationOptions = {}
+    options: MindmapGenerationOptions & { enableWebSearch?: boolean } = {}
   ): Promise<MindmapResponse> {
     try {
+      // Auto-detect if web search should be enabled based on prompt content
+      const promptText = payload.prompt.toLowerCase();
+      const hasCurrentKeywords = [
+        'latest', 'recent', 'current', 'today', 'now', 'breaking', 'update', 
+        'trending', '2025', '2024', 'news', 'weather', 'stock', 'market'
+      ].some(keyword => promptText.includes(keyword));
+      
+      // Enable web search by default, or if current keywords detected, or if explicitly requested
+      const enableWebSearch = options.enableWebSearch ?? hasCurrentKeywords ?? true;
+      const hasExaKey = !!process.env.EXA_API_KEY;
+      
+      console.log(`Non-streaming web search enabled: ${enableWebSearch}, EXA_API_KEY present: ${hasExaKey}`);
+      
       let messages;
       
       if (payload.context?.isFollowUp && payload.context.existingMindmap) {
@@ -65,11 +79,21 @@ export class MindmapService {
         messages = createInitialMindmapPrompt(enhancedPrompt);
       }
       
+      // Configure tools - use real web search if available
+      const tools = enableWebSearch && hasExaKey ? {
+        [webSearchTool.id]: webSearchTool
+      } : undefined;
+      
+      if (enableWebSearch && !hasExaKey) {
+        console.warn('Web search requested but EXA_API_KEY not configured. Add EXA_API_KEY to environment variables.');
+      }
+      
       const response = await llmClient.generateText({
         messages,
         config: {
           temperature: 0.7,
           maxTokens: 2000,
+          tools,
         }
       });
       

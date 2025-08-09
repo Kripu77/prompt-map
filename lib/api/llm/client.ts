@@ -9,6 +9,7 @@ export interface LLMConfig {
   topP?: number;
   frequencyPenalty?: number;
   presencePenalty?: number;
+  tools?: Record<string, any>;
 }
 
 export interface LLMRequest {
@@ -36,13 +37,14 @@ export interface LLMError {
 }
 
 
-const DEFAULT_CONFIG: Required<LLMConfig> = {
-  model: "deepseek/deepseek-r1-0528-qwen3-8b:free",
+const DEFAULT_CONFIG: Required<Omit<LLMConfig, 'tools'>> & Pick<LLMConfig, 'tools'> = {
+  model: "openai/gpt-4o-mini", // Switch to a model that supports tools
   temperature: 0.7,
   maxTokens: 2000,
   topP: 0.9,
   frequencyPenalty: 0,
   presencePenalty: 0,
+  tools: undefined,
 };
 
 
@@ -80,6 +82,7 @@ class LLMClient {
           topP: config.topP,
           frequencyPenalty: config.frequencyPenalty,
           presencePenalty: config.presencePenalty,
+          tools: config.tools,
         });
 
         return this.formatResponse(result, config.model);

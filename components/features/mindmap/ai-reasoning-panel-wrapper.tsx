@@ -2,6 +2,7 @@
 
 import { AIReasoningPanel } from './ai-reasoning-panel';
 import { useReasoningPanelStore } from '@/lib/stores/reasoning-panel-store';
+import { useUserSettings } from '@/hooks/use-user-settings';
 
 export function AIReasoningPanelWrapper() {
   const { 
@@ -11,6 +12,7 @@ export function AIReasoningPanelWrapper() {
     currentTopic, 
     toggleVisibility 
   } = useReasoningPanelStore();
+  const { settings } = useUserSettings();
 
   if (!isVisible) {
     return null;
@@ -23,6 +25,7 @@ export function AIReasoningPanelWrapper() {
       isVisible={isVisible}
       onToggleVisibility={toggleVisibility}
       topic={currentTopic}
+      mode={settings?.mindmapMode}
     />
   );
 }
