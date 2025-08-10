@@ -112,7 +112,6 @@ export async function createThreadAPI(data: ThreadCreateRequest): Promise<Thread
   }
   
   const result = await response.json();
-  // The new API returns { success: true, data: { thread: {...} } }
   return result.data as ThreadResponse;
 }
 
@@ -142,7 +141,6 @@ export async function updateThreadAPI({ id, updates }: { id: string, updates: Th
   }
   
   const result = await response.json();
-  // The new API returns { success: true, data: { thread: {...} } }
   return result.data as ThreadResponse;
 }
 
@@ -157,6 +155,5 @@ export async function deleteThreadAPI(id: string): Promise<ThreadDeleteResponse>
   }
   
   const result = await response.json();
-  // The new API returns { success: true, data: { success: true, deletedId: "..." } }
   return result.data as ThreadDeleteResponse;
 }

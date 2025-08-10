@@ -99,8 +99,7 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
   const { 
     position: toolbarPosition, 
     resetPosition,
-    isFirstVisit,
-    handleResizeStart
+    isFirstVisit
   } = useDraggableToolbar(
     toolbarRef,
     containerRef
@@ -457,7 +456,6 @@ export const MindmapView = forwardRef<SVGSVGElement>((props, ref) => {
           onFullscreenToggle={handleFullscreenToggle}
           onResetPosition={resetPosition}
           isFirstVisit={isFirstVisit}
-          handleResizeStart={handleResizeStart}
         />
       )}
       

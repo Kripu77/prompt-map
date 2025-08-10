@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
 import { useThreads } from '@/hooks/use-threads';
+import { useThreadsStore } from '@/lib/stores/threads-store';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useAnonymousAnalytics } from '@/hooks/use-anonymous-analytics';
@@ -39,6 +40,7 @@ export function useMindmapGeneration(): UseMindmapGenerationReturn {
   } = useMindmapStore();
   
   const { createThread, isAuthenticated } = useThreads();
+  const { setCurrentThread } = useThreadsStore();
   const { data: session, status } = useSession();
   const router = useRouter();
   const { recordAnonymousMindmap } = useAnonymousAnalytics();
@@ -143,7 +145,10 @@ export function useMindmapGeneration(): UseMindmapGenerationReturn {
         if (isAuthenticated) {
           try {
             const title = extractMindmapTitle(data.content) || value;
-            await createThread(title, data.content);
+            const createdThread = await createThread(title, data.content);
+            if (createdThread) {
+              setCurrentThread(createdThread);
+            }
           } catch (error) {
             console.error('Error auto-saving mindmap:', error);
           }
@@ -161,7 +166,7 @@ export function useMindmapGeneration(): UseMindmapGenerationReturn {
     setIsLoading, setError, setPrompt, setMindmapData,
     isUserGenerated, generatePromptPayload, topicShiftMutation,
     mindmapMutation, isAuthenticated, recordAnonymousMindmap,
-    showLoginNotification, createThread
+    showLoginNotification, createThread, setCurrentThread
   ]);
 
   const handleTopicShift = useCallback(() => {
