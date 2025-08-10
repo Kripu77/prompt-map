@@ -1,4 +1,4 @@
-import { MindmapContainer } from '@/components/features/mindmap/mindmap-container';
+import { MindmapContainer, SidePanel, SidePanelToggle } from '@/components/features/mindmap';
 
 import { AIReasoningPanelWrapper } from '@/components/features/mindmap/ai-reasoning-panel-wrapper';
 import { OnboardingGuide } from '@/components/features/onboarding';
@@ -11,7 +11,7 @@ export default async function Home() {
   const userId = session?.user?.id;
 
   return (
-    <main className="flex-1 flex flex-col overflow-hidden">
+    <main className="flex-1 flex flex-col overflow-hidden relative">
       <MindmapContainer />
 
       <AIReasoningPanelWrapper />
@@ -19,6 +19,10 @@ export default async function Home() {
       <div className="hidden md:block">
         <OnboardingGuide userId={userId} />
       </div>
+      
+      {/* Side Panel Components */}
+      <SidePanelToggle />
+      <SidePanel />
     </main>
   );
 }

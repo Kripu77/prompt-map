@@ -20,7 +20,7 @@ export class StreamingMindmapService {
       const promptText = payload.prompt.toLowerCase();
       const hasCurrentKeywords = [
         'latest', 'recent', 'current', 'today', 'now', 'breaking', 'update', 
-        'trending', '2025', '2024', 'news', 'weather', 'stock', 'market'
+        'trending', '2025',  'news', 'weather', 'stock', 'market'
       ].some(keyword => promptText.includes(keyword));
       
       // Enable web search by default, or if current keywords detected, or if explicitly requested

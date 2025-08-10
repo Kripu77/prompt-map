@@ -20,6 +20,7 @@ import { formatDistanceToNow, isToday, isYesterday, differenceInDays, difference
 import { useMindmapStore } from "@/lib/stores/mindmap-store";
 import { useReasoningPanelStore } from "@/lib/stores/reasoning-panel-store";
 import { useSidebarStore } from "@/lib/stores/sidebar-store";
+import { useThreadsStore } from "@/lib/stores/threads-store";
 import { usePathname } from "next/navigation";
 import { Input } from "../../ui/input";
 import { setSidebarHandler } from "../../layout/header";
@@ -76,6 +77,7 @@ export function ThreadsSidebar() {
   const { isOpen, setIsOpen } = useSidebarStore();
   const { mindmapData, setMindmapData, setPrompt, setIsLoading, setError } = useMindmapStore();
   const { setReasoningContent, showForSavedThread } = useReasoningPanelStore();
+  const { setCurrentThread } = useThreadsStore();
   const { status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const pathname = usePathname();
@@ -270,6 +272,10 @@ export function ThreadsSidebar() {
     try {
       const loadedThread = await loadThread(thread.id);
       if (loadedThread && loadedThread.content) {
+        // Set the current thread in the threads store FIRST
+        setCurrentThread(loadedThread);
+        
+        // Then update the mindmap data
         setMindmapData(loadedThread.content);
         setPrompt(loadedThread.title);
         setIsLoading(false);

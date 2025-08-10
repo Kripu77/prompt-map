@@ -2,7 +2,7 @@
 
 import React, { forwardRef, useState, useEffect } from 'react';
 import { Button } from '../../ui/button';
-import { ZoomIn, ZoomOut, Maximize, Minimize, Download, GripHorizontal, MoveIcon, CornerRightDown } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, Minimize, Download, GripHorizontal, MoveIcon } from 'lucide-react';
 import { Markmap } from 'markmap-view';
 import { exportMindmap } from '@/lib/mindmap-utils';
 import { generateTitleFromPrompt } from '@/lib/utils';
@@ -19,7 +19,6 @@ interface MindmapToolbarProps {
   onFullscreenToggle: () => void;
   onResetPosition?: () => void;
   isFirstVisit?: boolean;
-  handleResizeStart?: () => void;
 }
 
 export const MindmapToolbar = forwardRef<HTMLDivElement, MindmapToolbarProps>(
@@ -34,7 +33,6 @@ export const MindmapToolbar = forwardRef<HTMLDivElement, MindmapToolbarProps>(
     onFullscreenToggle,
     onResetPosition,
     isFirstVisit = false,
-    handleResizeStart
   }, ref) => {
     const [showDragHint, setShowDragHint] = useState(false);
     const [showWelcomeHint, setShowWelcomeHint] = useState(isFirstVisit);
@@ -211,7 +209,7 @@ export const MindmapToolbar = forwardRef<HTMLDivElement, MindmapToolbarProps>(
         </div>
 
         {/* Resize handle */}
-        <div 
+        {/* <div 
           className={cn(
             "absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize",
             "opacity-60 hover:opacity-100 transition-opacity",
@@ -225,7 +223,7 @@ export const MindmapToolbar = forwardRef<HTMLDivElement, MindmapToolbarProps>(
           title="Resize toolbar"
         >
           <CornerRightDown className="h-3.5 w-3.5 text-foreground/70" />
-        </div>
+        </div> */}
       </div>
     );
   }

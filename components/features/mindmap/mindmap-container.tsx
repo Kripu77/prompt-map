@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStreamingMindmap } from '@/hooks/use-streaming-mindmap';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
+import { useSidePanelStore } from '@/lib/stores/side-panel-store';
 import { StreamingMindmapView } from './streaming-mindmap-view';
 import { PromptInput } from './prompt-input';
 import { MindmapView } from './mindmap-view';
@@ -17,6 +18,7 @@ import type { MindmapMode } from '@/lib/api/llm/prompts/mindmap-prompts';
 export function MindmapContainer() {
   const { mindmapData, isLoading: storeLoading } = useMindmapStore();
   const { settings, setMindmapMode } = useUserSettings();
+  const { isOpen: isSidePanelOpen } = useSidePanelStore();
   const {
     streamingContent,
     isStreaming,
@@ -144,7 +146,7 @@ export function MindmapContainer() {
       >
         <div className="flex flex-col items-center justify-center">
           <div className="flex items-center gap-2 mb-2">
-            <h1 className="text-center text-xl sm:text-3xl font-bold text-foreground drop-shadow-sm bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+            <h1 className="text-center text-xl sm:text-3xl font-bold drop-shadow-sm bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
               {mapTitle}
             </h1>
             {isStreaming && (
@@ -301,32 +303,37 @@ export function MindmapContainer() {
         )}
       </AnimatePresence>
 
-      <motion.div 
-        className="prompt-input-container fixed bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-[95%] sm:max-w-2xl px-2 sm:px-4 z-[200]"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", damping: 20, stiffness: 90, delay: 0.3 }}
-        style={{ 
-          transform: "translateX(-50%)",
-          transformOrigin: "bottom center",
-          willChange: "transform"
-        }}
-      >
-        <PromptInput
-          onSubmit={handlePromptSubmit}
-          loading={isGenerating || topicShiftDetected}
-          error={error}
-          isFollowUpMode={isFollowUpMode}
-          mode={settings?.mindmapMode || 'comprehensive'}
-          onModeChange={handleModeChange}
-          placeholder={
-            isFollowUpMode 
-              ? "Ask a follow-up question to refine the mindmap..." 
-              : "Core concepts of Atomic Habits, Clean Code, etc."
-          }
-          disabled={topicShiftDetected}
-        />
-      </motion.div>
+      <AnimatePresence>
+        {!isSidePanelOpen && (
+          <motion.div 
+            className="prompt-input-container fixed bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-[95%] sm:max-w-2xl px-2 sm:px-4 z-[200]"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ type: "spring", damping: 20, stiffness: 90, delay: 0.1 }}
+            style={{ 
+              transform: "translateX(-50%)",
+              transformOrigin: "bottom center",
+              willChange: "transform"
+            }}
+          >
+            <PromptInput
+              onSubmit={handlePromptSubmit}
+              loading={isGenerating || topicShiftDetected}
+              error={error}
+              isFollowUpMode={isFollowUpMode}
+              mode={settings?.mindmapMode || 'comprehensive'}
+              onModeChange={handleModeChange}
+              placeholder={
+                isFollowUpMode 
+                  ? "Ask a follow-up question to refine the mindmap..." 
+                  : "Core concepts of Atomic Habits, Clean Code, etc."
+              }
+              disabled={topicShiftDetected}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
