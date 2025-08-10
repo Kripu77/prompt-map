@@ -249,7 +249,6 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          {/* Keep UserNav outside dropdown for easy profile access */}
           <UserNav />
         </motion.div>
       </div>
