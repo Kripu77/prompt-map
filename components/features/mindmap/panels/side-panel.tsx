@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useSidePanelStore } from '@/lib/stores/side-panel-store';
 import { useMindmapEditor } from '@/hooks/use-mindmap-editor';
-import { RichTextEditor } from './rich-text-editor';
+import { RichTextEditor } from '../editors/rich-text-editor';
 import {
   Sheet,
   SheetContent,

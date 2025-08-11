@@ -5,9 +5,11 @@ import { motion, animate } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Brain, X, Search, ExternalLink, Globe, Lightbulb, Target, Zap } from "lucide-react"
+import { Brain, X, Search, ExternalLink, Globe, Lightbulb, Target, Zap, WrenchIcon, BookIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { MindmapMode } from "@/lib/types/settings"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface ToolCall {
   id: string
@@ -24,6 +26,7 @@ interface ParsedReasoningContent {
   text: string
   toolCalls: ToolCall[]
   toolResults: ToolResult[]
+  sources: Array<{ url: string; title?: string; content?: string }>
 }
 
 interface ReasoningStep {
@@ -171,6 +174,7 @@ function parseReasoningContent(content: string): ParsedReasoningContent {
   const lines = content.split("\n")
   const toolCalls: ToolCall[] = []
   const toolResults: ToolResult[] = []
+  const sources: Array<{ url: string; title?: string; content?: string }> = []
   let cleanText = ""
 
   for (const line of lines) {
@@ -197,6 +201,18 @@ function parseReasoningContent(content: string): ParsedReasoningContent {
           id: toolResultMatch[1],
           result,
         })
+
+        if (result.results && Array.isArray(result.results)) {
+          result.results.slice(0, 3).forEach((item: any) => {
+            if (item.url) {
+              sources.push({
+                url: item.url,
+                title: item.title || `Search Result`,
+                content: item.content || item.snippet
+              })
+            }
+          })
+        }
       } catch {
         cleanText += line + "\n"
       }
@@ -212,101 +228,127 @@ function parseReasoningContent(content: string): ParsedReasoningContent {
     }
   }
 
+  const urlRegex = /`(https?:\/\/[^\s`]+)`/g
+  let match
+  while ((match = urlRegex.exec(cleanText)) !== null) {
+    sources.push({
+      url: match[1],
+      title: `Web Reference`,
+      content: `Found relevant information at ${match[1]}`
+    })
+  }
+
   return {
     text: cleanText.trim(),
     toolCalls,
     toolResults,
+    sources: sources.filter((source, index, self) => 
+      index === self.findIndex(s => s.url === source.url)
+    )
   }
 }
 
-function WebSearchResults({ results }: { results: Record<string, unknown> }) {
-  if (!results || !results.results) return null
-
-  const extractWebResults = (resultsData: unknown) => {
-    if (Array.isArray(resultsData)) {
-      return resultsData.slice(0, 3)
-    }
-    if (typeof resultsData === "string") {
-      const urlRegex = /`(https?:\/\/[^\s`]+)`/g
-      const urls = []
-      let match
-      while ((match = urlRegex.exec(resultsData)) !== null) {
-        urls.push(match[1])
-      }
-      return urls.slice(0, 3).map((url, index) => ({
-        url,
-        title: `Search Result ${index + 1}`,
-        content: `Found relevant information at ${url}`,
-      }))
-    }
-    return []
-  }
-
-  const webResults = extractWebResults(results.results)
-  if (webResults.length === 0) return null
-
-  return (
-    <div className="mt-3 space-y-2">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-        <Globe className="h-3 w-3" />
-        Web Search Results
-      </div>
-      {webResults.map((result, index) => (
-        <div key={index} className="bg-muted/30 rounded-md p-3 border border-border/40">
-          <div className="flex items-start gap-2">
-            <ExternalLink className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-foreground truncate">{result.title || "Web Result"}</div>
-              {result.url && (
-                <a
-                  href={result.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:text-primary/80 hover:underline truncate block"
-                >
-                  {result.url}
-                </a>
-              )}
-              {result.content && (
-                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                  {result.content.substring(0, 100)}...
-                </div>
-              )}
+function ToolDisplay({ toolCall, result }: { toolCall: ToolCall; result?: ToolResult }) {
+  const isWebSearch = toolCall.name === "search.web"
+  
+  // Only show a compact summary for web searches, hide raw JSON
+  if (isWebSearch) {
+    const query = toolCall.args.query as string
+    const resultCount = result?.result?.results ? (result.result.results as any[]).length : 0
+    
+    return (
+      <div className="not-prose mb-3 w-full rounded-lg border bg-muted/20 border-border/40 overflow-hidden">
+        <div className="flex w-full items-center justify-between gap-3 p-3">
+          <div className="flex items-center gap-2">
+            <Globe className="size-3.5 text-muted-foreground" />
+            <span className="font-medium text-sm">Web Search</span>
+            <div className="rounded-full text-xs bg-green-500/10 text-green-600 border border-green-500/30 px-2 py-0.5">
+              {resultCount} results
             </div>
           </div>
         </div>
+        <div className="px-3 pb-3">
+          <p className="text-xs text-muted-foreground">
+            Searched for: <span className="font-medium text-foreground">"{query}"</span>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Hide other tool calls to reduce clutter
+  return null
+}
+
+function ReasoningStepsDisplay({ steps }: { steps: ReasoningStep[] }) {
+  const [showAll, setShowAll] = useState(false)
+  
+  const displayedSteps = showAll ? steps : steps.slice(0, 4)
+
+  return (
+    <>
+      {displayedSteps.map((step, index) => (
+        <ReasoningStepCard key={step.id} step={step} index={index} />
       ))}
+      {steps.length > 4 && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className="text-xs text-muted-foreground hover:text-foreground text-center py-2 w-full hover:underline"
+        >
+          {showAll ? 'Show less' : `+${steps.length - 4} more steps`}
+        </button>
+      )}
+    </>
+  )
+}
+
+function SourcesDisplay({ sources }: { sources: Array<{ url: string; title?: string; content?: string }> }) {
+  const [showAll, setShowAll] = useState(false)
+  
+  if (sources.length === 0) return null
+
+  const displayedSources = showAll ? sources : sources.slice(0, 3)
+
+  return (
+    <div className="not-prose mb-3 text-primary text-xs">
+      <div className="flex items-center gap-2 mb-2">
+        <BookIcon className="h-3.5 w-3.5" />
+        <p className="font-medium">Sources ({sources.length})</p>
+      </div>
+      <div className="flex flex-col gap-1.5 w-fit">
+        {displayedSources.map((source, index) => (
+          <a
+            key={index}
+            className="flex items-center gap-2 hover:underline text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            href={source.url}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <ExternalLink className="h-2.5 w-2.5 flex-shrink-0" />
+            <span className="block font-medium truncate max-w-[200px]">{source.title || source.url}</span>
+          </a>
+        ))}
+        {sources.length > 3 && (
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="text-xs text-muted-foreground hover:text-foreground ml-4 text-left hover:underline"
+          >
+            {showAll ? 'Show less' : `+${sources.length - 3} more sources`}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
 
-function ToolCallDisplay({ toolCall, result }: { toolCall: ToolCall; result?: ToolResult }) {
-  const isWebSearch = toolCall.name === "search.web"
+function ResponseDisplay({ content, isStreaming }: { content: string; isStreaming: boolean }) {
+  if (!content) return null
 
   return (
-    <div className="bg-primary/5 rounded-lg border border-primary/20 mb-2 md:mb-3 p-2 md:p-4">
-      <div className="flex items-center gap-2 mb-2 md:mb-3">
-        <Search className="h-3 w-3 md:h-4 md:w-4 text-primary flex-shrink-0" />
-        <span className="text-xs md:text-sm font-medium text-primary truncate">
-          {isWebSearch ? "Web Search" : toolCall.name}
-        </span>
-      </div>
-      {toolCall.args && typeof toolCall.args === "object" && toolCall.args !== null && "query" in toolCall.args && (
-        <div className="text-xs md:text-sm text-muted-foreground mb-2 md:mb-3">
-          <span className="font-medium">Query:</span> <span className="break-words">{String(toolCall.args.query)}</span>
-        </div>
-      )}
-      {result && isWebSearch && <WebSearchResults results={result.result} />}
-      {result && !isWebSearch && (
-        <div className="text-xs md:text-sm text-muted-foreground">
-          <span className="font-medium">Result:</span> 
-          <div className="mt-1 p-2 bg-muted/30 rounded text-xs overflow-x-auto">
-            <pre className="whitespace-pre-wrap break-all">
-              {JSON.stringify(result.result).substring(0, 150)}...
-            </pre>
-          </div>
-        </div>
-      )}
+    <div className="prose prose-sm max-w-none text-foreground">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        {content}
+      </ReactMarkdown>
     </div>
   )
 }
@@ -338,7 +380,6 @@ export function AIReasoningPanel({
   const throttleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1280)
 
-  // Modern smooth scroll implementation optimized for streaming content
   const smoothScrollToBottom = useCallback(() => {
     if (!scrollAreaRef.current || isUserScrollingRef.current) return
 
@@ -348,28 +389,23 @@ export function AIReasoningPanel({
     const { scrollHeight, clientHeight, scrollTop } = scrollContainer
     const maxScrollTop = scrollHeight - clientHeight
 
-    // Only scroll if there's content to scroll and we're not already near the bottom
     if (maxScrollTop <= 0 || scrollTop >= maxScrollTop - 5) return
 
-    // Stop any existing scroll animation
     if (scrollAnimationRef.current?.stop) {
       scrollAnimationRef.current.stop()
     }
 
     const distance = maxScrollTop - scrollTop
     
-    // For streaming content, use shorter, more frequent animations
-    // This creates a smooth "following" effect as content appears
     const duration = isStreaming 
-      ? Math.min(0.6, Math.max(0.3, distance / 400)) // Faster for streaming (0.3-0.6s)
-      : Math.min(1.2, Math.max(0.5, distance / 300)) // Slower for static content (0.5-1.2s)
+      ? Math.min(0.6, Math.max(0.3, distance / 400))
+      : Math.min(1.2, Math.max(0.5, distance / 300))
 
-    // Create smooth scroll animation with optimized easing for streaming
     const animation = animate(scrollTop, maxScrollTop, {
       duration,
       ease: isStreaming 
-        ? [0.25, 0.46, 0.45, 0.94] // Smoother easing for streaming content
-        : [0.08, 0.82, 0.17, 1],   // More dramatic easing for static content
+        ? [0.25, 0.46, 0.45, 0.94]
+        : [0.08, 0.82, 0.17, 1],
       onUpdate: (value) => {
         if (scrollContainer && !isUserScrollingRef.current) {
           scrollContainer.scrollTop = value
@@ -383,15 +419,12 @@ export function AIReasoningPanel({
     scrollAnimationRef.current = { stop: animation.stop }
   }, [isStreaming])
 
-  // Throttled scroll trigger optimized for streaming performance
   const throttledScrollTrigger = useCallback(() => {
-    // Clear existing throttle timeout
     if (throttleTimeoutRef.current) {
       clearTimeout(throttleTimeoutRef.current)
     }
 
-    // Use more aggressive throttling for streaming content
-    const throttleDelay = isStreaming ? 50 : 200 // Much more frequent updates during streaming
+    const throttleDelay = isStreaming ? 50 : 200
 
     throttleTimeoutRef.current = setTimeout(() => {
       if (!isUserScrollingRef.current) {
@@ -402,7 +435,6 @@ export function AIReasoningPanel({
     }, throttleDelay)
   }, [smoothScrollToBottom, isStreaming])
 
-  // Immediate scroll trigger for streaming (no throttling)
   const immediateScrollTrigger = useCallback(() => {
     if (!isUserScrollingRef.current) {
       requestAnimationFrame(() => {
@@ -411,7 +443,6 @@ export function AIReasoningPanel({
     }
   }, [smoothScrollToBottom])
 
-  // Detect user scrolling to pause auto-scroll
   useEffect(() => {
     const scrollContainer = scrollAreaRef.current?.querySelector("[data-radix-scroll-area-viewport]") as HTMLElement
     if (!scrollContainer) return
@@ -422,7 +453,6 @@ export function AIReasoningPanel({
       if (!isScrolling) {
         isUserScrollingRef.current = true
         
-        // Stop any ongoing animation when user scrolls
         if (scrollAnimationRef.current?.stop) {
           scrollAnimationRef.current.stop()
         }
@@ -430,21 +460,18 @@ export function AIReasoningPanel({
       
       isScrolling = true
       
-      // Clear existing timeout
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current)
       }
       
-      // Resume auto-scroll after user stops scrolling
       scrollTimeoutRef.current = setTimeout(() => {
         isScrolling = false
         isUserScrollingRef.current = false
         
-        // Resume auto-scroll if we're streaming and not at bottom
         if (isStreaming) {
           throttledScrollTrigger()
         }
-      }, 1000) // Wait 1 second after user stops scrolling
+      }, 1000)
     }
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
@@ -457,7 +484,6 @@ export function AIReasoningPanel({
     }
   }, [isStreaming, throttledScrollTrigger])
 
-  // Enhanced content change detection for streaming
   useEffect(() => {
     if (!reasoningContent) {
       lastContentLength.current = 0
@@ -466,16 +492,12 @@ export function AIReasoningPanel({
 
     const currentLength = reasoningContent.length
     
-    // Always trigger scroll when content changes during streaming
     if (isStreaming) {
-      // For streaming, scroll on every content change regardless of size
       if (currentLength !== lastContentLength.current) {
         lastContentLength.current = currentLength
-        // Use immediate scroll for streaming content
         immediateScrollTrigger()
       }
     } else {
-      // For static content, only scroll if content actually grew
       if (currentLength > lastContentLength.current) {
         lastContentLength.current = currentLength
         setTimeout(throttledScrollTrigger, 100)
@@ -483,25 +505,19 @@ export function AIReasoningPanel({
     }
   }, [reasoningContent, isStreaming, throttledScrollTrigger, immediateScrollTrigger])
 
-  // Additional effect specifically for streaming content updates
   useEffect(() => {
     if (isStreaming && reasoningContent) {
-      // Force immediate scroll trigger during streaming
       immediateScrollTrigger()
     }
   }, [reasoningContent, isStreaming, immediateScrollTrigger])
 
-  // Handle streaming state changes
   useEffect(() => {
     if (isStreaming) {
-      // Reset user scrolling state when streaming starts
       isUserScrollingRef.current = false
-      // Trigger immediate initial scroll
       immediateScrollTrigger()
     }
   }, [isStreaming, immediateScrollTrigger])
 
-  // Handle window resize for responsive positioning
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth)
@@ -511,7 +527,6 @@ export function AIReasoningPanel({
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (scrollAnimationRef.current?.stop) {
@@ -656,23 +671,23 @@ export function AIReasoningPanel({
                 "h-48 sm:h-64 md:h-80"
               )}
             >
-              <div ref={contentRef} className="space-y-3 pr-2">
-                {/* Tool calls first */}
+              <div ref={contentRef} className="space-y-4 pr-2">
                 {parsed.toolCalls.map((toolCall) => {
                   const result = parsed.toolResults.find((r) => r.id === toolCall.id)
-                  return <ToolCallDisplay key={toolCall.id} toolCall={toolCall} result={result} />
+                  return <ToolDisplay key={toolCall.id} toolCall={toolCall} result={result} />
                 })}
 
-                {/* Reasoning steps */}
+                {parsed.sources.length > 0 && (
+                  <SourcesDisplay sources={parsed.sources} />
+                )}
+
                 {reasoningSteps.length > 0 && (
-                  <div className="space-y-2 md:space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      <Brain className="h-3 w-3" />
+                      <Lightbulb className="h-3 w-3" />
                       Thought Process
                     </div>
-                    {reasoningSteps.map((step, index) => (
-                      <ReasoningStepCard key={step.id} step={step} index={index} />
-                    ))}
+                    <ReasoningStepsDisplay steps={reasoningSteps} />
                   </div>
                 )}
               </div>

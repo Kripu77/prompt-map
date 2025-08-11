@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react';
-import { Button } from '../../ui/button';
+import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Maximize2, Minimize2 } from 'lucide-react';
 
 interface ZoomControlsProps {

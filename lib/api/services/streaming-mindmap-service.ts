@@ -8,7 +8,7 @@ import {
 import { webSearchTool } from '@/lib/tools/web-search-tool';
 import type { PromptPayload } from '@/types/api';
 import type { MindmapGenerationOptions } from './mindmap-service';
-import type { CoreTool } from 'ai';
+import { tool } from 'ai';
 
 export class StreamingMindmapService {
   async streamMindmapGeneration(
@@ -54,11 +54,6 @@ export class StreamingMindmapService {
         messages = createInitialMindmapPrompt(enhancedPrompt, undefined, options.customDate);
       }
       
-      // Configure tools - use real web search if available, otherwise undefined
-      const tools: Record<string, CoreTool> | undefined = enableWebSearch && hasExaKey ? {
-        'search.web': webSearchTool
-      } : undefined;
-      
       if (enableWebSearch && !hasExaKey) {
         console.warn('Web search requested but EXA_API_KEY not configured. Add EXA_API_KEY to environment variables.');
       }
@@ -67,9 +62,11 @@ export class StreamingMindmapService {
         messages,
         config: {
           temperature: 0.1,
-          maxTokens: 1200,
+          maxOutputTokens: 1200,
           includeReasoning: true,
-          tools,
+          tools: enableWebSearch && hasExaKey ? {
+            'search.web': webSearchTool
+          } : undefined,
         }
       });
       return result;

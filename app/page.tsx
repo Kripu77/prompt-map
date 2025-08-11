@@ -1,6 +1,4 @@
-import { MindmapContainer, SidePanel, SidePanelToggle } from '@/components/features/mindmap';
-
-import { AIReasoningPanelWrapper } from '@/components/features/mindmap/ai-reasoning-panel-wrapper';
+import { AIReasoningPanelWrapper, MindmapContainer, SidePanel, SidePanelToggle } from '@/components/features/mindmap';
 import { OnboardingGuide } from '@/components/features/onboarding';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';

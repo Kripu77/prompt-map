@@ -75,17 +75,17 @@ class LLMClient {
         this.requestCount++;
         
         const result = await generateText({
-          model: this.client(config.model),
+          model: this.client.chat(config.model) as any,
           messages: request.messages,
           temperature: config.temperature,
-          maxTokens: config.maxTokens,
+          maxOutputTokens: config.maxTokens,
           topP: config.topP,
           frequencyPenalty: config.frequencyPenalty,
           presencePenalty: config.presencePenalty,
           tools: config.tools,
         });
 
-        return this.formatResponse(result, config.model);
+        return this.formatResponse(result as any, config.model);
       } catch (error) {
         this.errorCount++;
         lastError = this.parseError(error);
@@ -158,9 +158,9 @@ class LLMClient {
     return {
       content: result.text,
       usage: result.usage ? {
-        promptTokens: result.usage.promptTokens,
-        completionTokens: result.usage.completionTokens,
-        totalTokens: result.usage.totalTokens,
+        promptTokens: result.usage.promptTokens || 0,
+        completionTokens: result.usage.completionTokens || 0,
+        totalTokens: result.usage.totalTokens || 0,
       } : undefined,
       model,
       finishReason: result.finishReason || 'unknown',

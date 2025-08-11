@@ -5,15 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useStreamingMindmap } from '@/hooks/use-streaming-mindmap';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
 import { useSidePanelStore } from '@/lib/stores/side-panel-store';
-import { StreamingMindmapView } from './streaming-mindmap-view';
-import { PromptInput } from './prompt-input';
-import { MindmapView } from './mindmap-view';
+import { StreamingMindmapView } from '../views/streaming-mindmap-view';
+import { PromptInput } from '../controls/prompt-input';
+import { ReactFlowMindmapView } from '../views/react-flow/ReactFlowMindmapView';
 import { Button } from '@/components/ui/button';
-import { LoaderCircle, Sparkles, CornerDownLeft, AlertCircle, Zap, Clock } from 'lucide-react';
+import { Sparkles, CornerDownLeft, AlertCircle, Zap, Clock, Brain } from 'lucide-react';
 import { generateTitleFromPrompt } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useUserSettings } from '@/hooks/use-user-settings';
 import type { MindmapMode } from '@/lib/api/llm/prompts/mindmap-prompts';
+import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ai-elements/reasoning';
 
 export function MindmapContainer() {
   const { mindmapData, isLoading: storeLoading } = useMindmapStore();
@@ -21,6 +22,7 @@ export function MindmapContainer() {
   const { isOpen: isSidePanelOpen } = useSidePanelStore();
   const {
     streamingContent,
+    reasoningContent,
     isStreaming,
     isComplete,
     error,
@@ -133,11 +135,9 @@ export function MindmapContainer() {
 
   return (
     <div className="bg-background w-full h-full relative overflow-hidden">
-      {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background/20 pointer-events-none z-0" />
       <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,rgba(120,120,120,0.1)_1px,transparent_1px)] bg-[length:24px_24px] pointer-events-none" />
       
-      {/* Header */}
       <motion.div 
         className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 w-full px-3 sm:px-0"
         initial={{ opacity: 0, y: -20 }}
@@ -166,8 +166,7 @@ export function MindmapContainer() {
             </div>
           )}
 
-          {/* Streaming Stats */}
-          {isStreaming && (
+          {isStreaming && progress.wordCount > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -185,11 +184,9 @@ export function MindmapContainer() {
         </div>
       </motion.div>
 
-      {/* Main Content Area */}
       <div className="w-full h-[calc(100vh-5rem)] flex items-center justify-center pt-12 pb-24 sm:pt-16 sm:pb-28 relative overflow-hidden">
         <div className="w-full h-full flex items-center justify-center max-w-[100%] sm:max-w-[90%] md:max-w-[85%] mx-auto relative z-10">
 
-          {/* Content States */}
           <AnimatePresence mode="wait">
             {!displayContent && !isGenerating ? (
 
@@ -215,26 +212,84 @@ export function MindmapContainer() {
                   Powered by AI with instant streaming for the best experience
                 </p>
               </motion.div>
-            ) : isGenerating && !streamingContent ? (
+            ) : isGenerating && !streamingContent && reasoningContent ? (
 
               <motion.div 
-                className="h-full flex flex-col items-center justify-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto px-4 pb-32"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.4 }}
               >
-                <motion.div
-                  animate={{ 
-                    scale: [1, 1.05, 1],
-                    opacity: [0.7, 1, 0.7],
-                  }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <LoaderCircle className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary" />
+                {/* Simple Brain Icon */}
+                <motion.div className="relative flex items-center justify-center mb-8">
+                  <motion.div
+                    animate={{ 
+                      rotate: [0, 360],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{ 
+                      rotate: { duration: 8, repeat: Infinity, ease: "linear" },
+                      scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                    }}
+                    className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-lg"
+                  >
+                    <Brain className="h-8 w-8 text-primary" />
+                  </motion.div>
                 </motion.div>
-                <p className="text-center text-muted-foreground mt-3 text-sm sm:text-base">
-                  {isFollowUpMode ? "Refining your mind map..." : "Gathering insights and organizing ideas..."}
-                </p>
+
+                {/* Title */}
+                <motion.div className="text-center space-y-4 mb-8">
+                  <motion.h3 
+                    className="text-2xl font-bold text-foreground"
+                    animate={{ opacity: [0.8, 1, 0.8] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    AI is thinking...
+                  </motion.h3>
+                  <p className="text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
+                    Analyzing your request and preparing the mindmap
+                  </p>
+                </motion.div>
+
+                {/* Fixed Height Reasoning Component */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.5 }}
+                  className="w-full max-w-2xl"
+                >
+                  <Reasoning 
+                    className="w-full bg-card/30 backdrop-blur-sm border border-border/30 rounded-lg p-4" 
+                    isStreaming={isStreaming && !isComplete}
+                    defaultOpen={true}
+                  >
+                    <ReasoningTrigger className="text-muted-foreground/80 font-light" />
+                    <ReasoningContent className="mt-3 h-32 overflow-y-auto text-sm font-light text-muted-foreground/90 leading-relaxed scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
+                      {reasoningContent}
+                    </ReasoningContent>
+                  </Reasoning>
+                </motion.div>
+
+                {/* Simple Progress indicator - only show when there's actual progress */}
+                {isStreaming && progress.wordCount > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="flex items-center gap-4 mt-8 text-sm text-muted-foreground"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>{progress.wordCount} words</span>
+                    </div>
+                    <div className="w-px h-4 bg-border" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span>{Math.round(progress.estimatedProgress)}% complete</span>
+                    </div>
+                  </motion.div>
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -253,7 +308,7 @@ export function MindmapContainer() {
                     onSave={handleSavePartial}
                   />
                 ) : (
-                  <MindmapView ref={svgRef} />
+                  <ReactFlowMindmapView mindmapData={mindmapData || ''} />
                 )}
               </motion.div>
             )}

@@ -1,10 +1,10 @@
 "use client"
 
-import { Button } from '../../ui/button'
+import { Button } from '@/components/ui/button'
 import { ZoomIn, ZoomOut, Maximize2, Download, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface MindmapControlsProps {
   onZoomIn: () => void
@@ -122,4 +122,4 @@ export function MindmapControls({
       </TooltipProvider>
     </motion.div>
   )
-} 
+}

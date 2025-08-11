@@ -184,7 +184,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
 
       const decoder = new TextDecoder();
       let accumulatedContent = '';
-      let accumulatedReasoning = ''; // Track reasoning separately
+      let accumulatedReasoning = '';
       
       try {
         while (true) {
@@ -194,11 +194,54 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
           
           const chunk = decoder.decode(value, { stream: true });
           
-          // Parse AI SDK streaming format
+          // Handle AI SDK UI message stream format for reasoning content
           const lines = chunk.split('\n');
           for (const line of lines) {
-            if (line.startsWith('0:')) {
-              // Text chunk
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6); // Remove 'data: ' prefix
+              if (dataStr.trim() === '[DONE]') {
+                break;
+              }
+              
+              try {
+                const data = JSON.parse(dataStr);
+                console.log('Parsed stream data:', data);
+                
+                // Handle text content
+                if (data.type === 'text-delta' && data.delta) {
+                  accumulatedContent += data.delta;
+                  setCompletion(accumulatedContent);
+                  
+                  // Update progress
+                  const wordCount = accumulatedContent.split(/\s+/).filter(word => word.length > 0).length;
+                  const estimatedProgress = Math.min(Math.round((wordCount / 500) * 100), 95);
+                  setProgress({ wordCount, estimatedProgress });
+                }
+                
+                // Handle reasoning content
+                if (data.type === 'reasoning-delta' && data.delta) {
+                  console.log('Processing reasoning delta:', data.delta);
+                  accumulatedReasoning += data.delta;
+                  setReasoning(accumulatedReasoning);
+                  appendReasoningContent(data.delta);
+                }
+                
+                // Handle reasoning start
+                if (data.type === 'reasoning-start') {
+                  console.log('Reasoning started with ID:', data.id);
+                }
+                
+                // Handle reasoning end
+                if (data.type === 'reasoning-end') {
+                  console.log('Reasoning ended for ID:', data.id);
+                }
+                
+              } catch (e) {
+                // If it's not valid JSON, skip this line
+                console.warn('Failed to parse stream data:', dataStr, 'Error:', e);
+              }
+            } else if (line.startsWith('0:')) {
+              // Fallback: Handle legacy text content chunk format
               const textData = line.slice(2);
               if (textData) {
                 try {
@@ -209,7 +252,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
                     
                     // Update progress
                     const wordCount = accumulatedContent.split(/\s+/).filter(word => word.length > 0).length;
-                    const estimatedProgress = Math.min(Math.round((wordCount / 500) * 100), 95); // Estimate based on ~500 words
+                    const estimatedProgress = Math.min(Math.round((wordCount / 500) * 100), 95);
                     setProgress({ wordCount, estimatedProgress });
                   }
                 } catch (e) {
@@ -217,14 +260,13 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
                   accumulatedContent += textData;
                   setCompletion(accumulatedContent);
                   
-                  // Update progress
                   const wordCount = accumulatedContent.split(/\s+/).filter(word => word.length > 0).length;
-                  const estimatedProgress = Math.min(Math.round((wordCount / 500) * 100), 95); // Estimate based on ~500 words
+                  const estimatedProgress = Math.min(Math.round((wordCount / 500) * 100), 95);
                   setProgress({ wordCount, estimatedProgress });
                 }
               }
             } else if (line.startsWith('g:')) {
-              // Reasoning chunk (AI SDK format)
+              // Fallback: Handle legacy reasoning chunk format
               const reasoningData = line.slice(2);
               if (reasoningData) {
                 try {
@@ -232,15 +274,23 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
                   if (parsed && typeof parsed === 'string') {
                     accumulatedReasoning += parsed;
                     setReasoning(accumulatedReasoning);
-                    appendReasoningContent(parsed); // Sync with reasoning panel
+                    appendReasoningContent(parsed);
                   }
                 } catch (e) {
                   // If it's not JSON, treat as plain text
                   accumulatedReasoning += reasoningData;
                   setReasoning(accumulatedReasoning);
-                  appendReasoningContent(reasoningData); // Sync with reasoning panel
+                  appendReasoningContent(reasoningData);
                 }
               }
+            } else if (line.trim() && !line.startsWith('0:') && !line.startsWith('g:') && !line.startsWith('data:')) {
+              // Fallback for plain text streams (non-reasoning models)
+              accumulatedContent += line + '\n';
+              setCompletion(accumulatedContent);
+              
+              const wordCount = accumulatedContent.split(/\s+/).filter(word => word.length > 0).length;
+              const estimatedProgress = Math.min(Math.round((wordCount / 500) * 100), 95);
+              setProgress({ wordCount, estimatedProgress });
             }
           }
         }

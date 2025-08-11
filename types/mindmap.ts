@@ -1,12 +1,12 @@
 
 
-import { INode } from 'markmap-common';
+// Removed markmap-common dependency - using React Flow types instead
 
 
 export interface MindmapData {
   content: string;
   title?: string;
-  nodes?: INode;
+  nodes?: any; 
   metadata?: MindmapMetadata;
 }
 

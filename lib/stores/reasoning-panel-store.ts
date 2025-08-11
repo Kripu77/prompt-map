@@ -41,16 +41,10 @@ export const useReasoningPanelStore = create<ReasoningPanelState>()(
       setStreaming: (streaming) => {
         set({ isStreaming: streaming });
         
-        // Auto-show panel when streaming starts, auto-hide when it stops
-        if (streaming) {
-          set({ isVisible: true, isAutoVisible: true });
-        } else {
-          // Only auto-hide if it was auto-shown
-          const state = get();
-          if (state.isAutoVisible) {
-            set({ isVisible: false, isAutoVisible: false });
-          }
-        }
+        // Don't auto-show panel when streaming starts - let user control visibility
+        // if (streaming) {
+        //   set({ isVisible: true, isAutoVisible: true });
+        // }
       },
       
       setCurrentTopic: (topic) => set({ currentTopic: topic }),

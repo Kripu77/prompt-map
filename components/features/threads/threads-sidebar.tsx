@@ -488,4 +488,3 @@ export function ThreadsSidebar() {
     </>
   );
 }
-

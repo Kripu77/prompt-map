@@ -1,41 +1,40 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamText } from "ai";
-import type { CoreMessage, CoreTool } from "ai";
+import type { ModelMessage } from "ai";
 
 export interface StreamingConfig {
   model?: string;
   temperature?: number;
-  maxTokens?: number;
+  maxOutputTokens?: number;
   topP?: number;
   includeReasoning?: boolean;
-  tools?: Record<string, CoreTool>;
+  tools?: any;
 }
 
 export interface StreamingRequest {
-  messages: CoreMessage[];
+  messages: ModelMessage[];
   config?: StreamingConfig;
 }
 
 const DEFAULT_STREAMING_CONFIG: Required<Omit<StreamingConfig, 'tools'>> & Pick<StreamingConfig, 'tools'> = {
   model: "deepseek/deepseek-r1",
   temperature: 0.1,
-  maxTokens: 1200,
+  maxOutputTokens: 1200,
   topP: 0.9,
   includeReasoning: true,
   tools: undefined,
 };
 
 class StreamingLLMClient {
-  private client: ReturnType<typeof createOpenRouter>;
+  private openrouter: ReturnType<typeof createOpenRouter>;
 
   constructor() {
     if (!process.env.OPENROUTER_API_KEY) {
       throw new Error('OPENROUTER_API_KEY environment variable is required');
     }
-
-    this.client = createOpenRouter({
+    
+    this.openrouter = createOpenRouter({
       apiKey: process.env.OPENROUTER_API_KEY,
-      baseURL: process.env.OPENROUTER_BASE_URL,
     });
   }
 
@@ -47,22 +46,22 @@ class StreamingLLMClient {
         model: config.model,
         includeReasoning: config.includeReasoning,
         temperature: config.temperature,
-        maxTokens: config.maxTokens
+        maxOutputTokens: config.maxOutputTokens
       });
 
       const result = await streamText({
-        model: this.client(config.model),
+        model: this.openrouter.chat(config.model) as any,
         messages: request.messages,
         temperature: config.temperature,
-        maxTokens: config.maxTokens,
+        maxOutputTokens: config.maxOutputTokens,
         topP: config.topP,
         tools: config.tools,
         experimental_providerMetadata: config.includeReasoning ? {
           openrouter: {
-            include_reasoning: true,
+            reasoning: true,
           },
         } : undefined,
-        onError: ({ error }) => {
+        onError: ({ error }: { error: any }) => {
           console.error('StreamText error occurred:', error);
           console.error('Error details:', {
             message: error instanceof Error ? error.message : 'Unknown error',
@@ -71,7 +70,7 @@ class StreamingLLMClient {
             error
           });
         },
-      });
+      } as any);
 
       console.log('StreamingLLMClient: Stream created successfully');
       return result;
