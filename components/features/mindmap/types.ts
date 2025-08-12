@@ -1,10 +1,10 @@
-import { Node, Edge } from '@xyflow/react';
+import { Node } from '@xyflow/react';
 
 export interface NodeData extends Record<string, unknown> {
   content: string;
   level: number;
   hasChildren: boolean;
-  children?: any[];
+  children?: unknown[];
   onToggle?: (id: string) => void;
   expanded?: boolean;
   isNewlyRendered?: boolean;

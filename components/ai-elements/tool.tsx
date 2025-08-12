@@ -16,7 +16,14 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import type { ToolUIPart } from 'ai';
+// Define ToolUIPart type locally since it's not exported from ai package
+type ToolUIPart = {
+  type: string;
+  state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  input: any;
+  errorText?: string;
+};
 import { CodeBlock } from './code-block';
 
 export type ToolProps = ComponentProps<typeof Collapsible>;

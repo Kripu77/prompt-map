@@ -8,7 +8,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { MindmapMode } from "@/lib/api/llm/prompts/mindmap-prompts";
-import type { ChatStatus } from "ai";
+// Define ChatStatus type locally since it's not exported from ai package
+type ChatStatus = 'idle' | 'submitted' | 'streaming' | 'error' | 'ready';
 
 interface PromptInputProps {
   onSubmit: (value: string) => void;

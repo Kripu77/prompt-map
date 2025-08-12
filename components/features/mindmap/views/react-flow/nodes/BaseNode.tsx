@@ -11,6 +11,7 @@ interface BaseNodeProps {
   data: NodeData;
   id: string;
   nodeType: 'root' | 'branch' | 'leaf';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   animationConfig?: any;
   className: string;
   contentClassName: string;
@@ -20,6 +21,7 @@ interface BaseNodeProps {
 
 export function BaseNode({
   data,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   id,
   nodeType,
   animationConfig,
@@ -32,12 +34,12 @@ export function BaseNode({
   const [actualDimensions, setActualDimensions] = useState<{width: number, height: number} | null>(null);
   const { width: calculatedWidth, height: calculatedHeight } = calculateNodeDimensions(data.content, nodeType);
   
-  // Measure actual content dimensions after render
+// Disggusting hack for now TODO KK: Comeback and fix
   useLayoutEffect(() => {
     if (contentRef.current) {
       const contentElement = contentRef.current;
       
-      // Temporarily make the content visible and measure it
+
       const tempDiv = document.createElement('div');
       tempDiv.style.position = 'absolute';
       tempDiv.style.visibility = 'hidden';

@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { ChatStatus } from 'ai';
+// Define ChatStatus type locally since it's not exported from ai package
+type ChatStatus = 'idle' | 'submitted' | 'streaming' | 'error';
 
 
 export type PromptInputProps = HTMLAttributes<HTMLFormElement>;
@@ -41,8 +42,6 @@ export const PromptInputTextarea = ({
   onChange,
   className,
   placeholder = 'What would you like to know?',
-  minHeight = 48,
-  maxHeight = 164,
   ...props
 }: PromptInputTextareaProps) => {
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {

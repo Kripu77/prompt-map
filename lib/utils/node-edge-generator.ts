@@ -4,7 +4,7 @@ import { calculateNodeDimensions, getNodeType } from './node-dimensions';
 import { EDGE_STYLES } from '../../components/features/mindmap/constants';
 
 export function generateVisibleNodesAndEdges(
-  tree: any, 
+  tree: unknown, 
   renderedNodeIds: Set<string>,
   onToggle: (id: string) => void
 ): { nodes: Node[], edges: Edge[] } {
@@ -13,24 +13,36 @@ export function generateVisibleNodesAndEdges(
   const visibleNodes: Node[] = [];
   const visibleEdges: Edge[] = [];
 
-  const traverse = (node: any, parentId?: string) => {
-    // Only render nodes that are in the renderedNodeIds set
-    if (!renderedNodeIds.has(node.id)) return;
+  const traverse = (node: unknown, parentId?: string) => {
+    // Type guard to ensure node has required properties
+    if (!node || typeof node !== 'object' || !('id' in node) || !('content' in node) || !('level' in node)) {
+      return;
+    }
 
-    const hasChildren = node.children && node.children.length > 0;
+    const typedNode = node as { 
+      id: string; 
+      content: string; 
+      level: number; 
+      children?: unknown[];
+    };
+
+    // Only render nodes that are in the renderedNodeIds set
+    if (!renderedNodeIds.has(typedNode.id)) return;
+
+    const hasChildren = Boolean(typedNode.children && typedNode.children.length > 0);
     const isExpanded = true; // Always expand all nodes
-    const nodeType = getNodeType(node.level, hasChildren);
-    const { width, height } = calculateNodeDimensions(node.content, nodeType);
+    const nodeType = getNodeType(typedNode.level, hasChildren);
+    const { width, height } = calculateNodeDimensions(typedNode.content, nodeType);
 
     visibleNodes.push({
-      id: node.id,
+      id: typedNode.id,
       type: nodeType,
       position: { x: 0, y: 0 },
       data: {
-        content: node.content,
-        level: node.level,
+        content: typedNode.content,
+        level: typedNode.level,
         hasChildren,
-        children: node.children,
+        children: typedNode.children,
         expanded: isExpanded,
         onToggle,
         isNewlyRendered: true,
@@ -42,15 +54,15 @@ export function generateVisibleNodesAndEdges(
     // Only add edge if parent is also rendered
     if (parentId && renderedNodeIds.has(parentId)) {
       visibleEdges.push({
-        id: `${parentId}-${node.id}`,
+        id: `${parentId}-${typedNode.id}`,
         source: parentId,
-        target: node.id,
+        target: typedNode.id,
         type: 'bezier',
         animated: true,
         style: {
           stroke: EDGE_STYLES.DEFAULT.stroke,
           strokeWidth: Math.max(
-            EDGE_STYLES.DEFAULT.strokeWidth - node.level * EDGE_STYLES.DYNAMIC_WIDTH_FACTOR, 
+            EDGE_STYLES.DEFAULT.strokeWidth - typedNode.level * EDGE_STYLES.DYNAMIC_WIDTH_FACTOR, 
             EDGE_STYLES.MIN_WIDTH
           ),
           strokeDasharray: EDGE_STYLES.DEFAULT.strokeDasharray,
@@ -59,8 +71,8 @@ export function generateVisibleNodesAndEdges(
     }
 
     // Traverse children
-    if (hasChildren) {
-      node.children.forEach((child: any) => traverse(child, node.id));
+    if (hasChildren && typedNode.children) {
+      typedNode.children.forEach((child: unknown) => traverse(child, typedNode.id));
     }
   };
 

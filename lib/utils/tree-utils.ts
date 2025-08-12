@@ -1,10 +1,14 @@
-export function collectAllNodeIds(tree: any): Set<string> {
+export function collectAllNodeIds(tree: unknown): Set<string> {
   const nodeIds = new Set<string>();
   
-  const traverse = (node: any) => {
-    nodeIds.add(node.id);
-    if (node.children) {
-      node.children.forEach(traverse);
+  const traverse = (node: unknown) => {
+    if (!node || typeof node !== 'object' || !('id' in node)) return;
+    
+    const typedNode = node as { id: string; children?: unknown[] };
+    nodeIds.add(typedNode.id);
+    
+    if (typedNode.children) {
+      typedNode.children.forEach(traverse);
     }
   };
   
@@ -12,11 +16,15 @@ export function collectAllNodeIds(tree: any): Set<string> {
   return nodeIds;
 }
 
-export function findNodeById(tree: any, nodeId: string): any | null {
-  const findNode = (node: any): any => {
-    if (node.id === nodeId) return node;
-    if (node.children) {
-      for (const child of node.children) {
+export function findNodeById(tree: unknown, nodeId: string): unknown | null {
+  const findNode = (node: unknown): unknown => {
+    if (!node || typeof node !== 'object' || !('id' in node)) return null;
+    
+    const typedNode = node as { id: string; children?: unknown[] };
+    if (typedNode.id === nodeId) return node;
+    
+    if (typedNode.children) {
+      for (const child of typedNode.children) {
         const found = findNode(child);
         if (found) return found;
       }
@@ -27,11 +35,15 @@ export function findNodeById(tree: any, nodeId: string): any | null {
   return findNode(tree);
 }
 
-export function getNodeLevel(tree: any, nodeId: string): number {
+export function getNodeLevel(tree: unknown, nodeId: string): number {
   const node = findNodeById(tree, nodeId);
-  return node ? node.level : 999;
+  if (node && typeof node === 'object' && 'level' in node) {
+    const typedNode = node as { level: number };
+    return typedNode.level;
+  }
+  return 999;
 }
 
-export function sortNodesByLevel(tree: any, nodeIds: string[]): string[] {
+export function sortNodesByLevel(tree: unknown, nodeIds: string[]): string[] {
   return nodeIds.sort((a, b) => getNodeLevel(tree, a) - getNodeLevel(tree, b));
 }

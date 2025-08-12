@@ -1,6 +1,6 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamText } from "ai";
-import type { ModelMessage } from "ai";
+import type { CoreMessage } from "ai";
 
 export interface StreamingConfig {
   model?: string;
@@ -8,11 +8,11 @@ export interface StreamingConfig {
   maxOutputTokens?: number;
   topP?: number;
   includeReasoning?: boolean;
-  tools?: any;
+  tools?: unknown;
 }
 
 export interface StreamingRequest {
-  messages: ModelMessage[];
+  messages: CoreMessage[];
   config?: StreamingConfig;
 }
 
@@ -50,6 +50,7 @@ class StreamingLLMClient {
       });
 
       const result = await streamText({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         model: this.openrouter.chat(config.model) as any,
         messages: request.messages,
         temperature: config.temperature,
@@ -61,7 +62,7 @@ class StreamingLLMClient {
             reasoning: true,
           },
         } : undefined,
-        onError: ({ error }: { error: any }) => {
+        onError: ({ error }: { error: unknown }) => {
           console.error('StreamText error occurred:', error);
           console.error('Error details:', {
             message: error instanceof Error ? error.message : 'Unknown error',
@@ -70,6 +71,7 @@ class StreamingLLMClient {
             error
           });
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       console.log('StreamingLLMClient: Stream created successfully');

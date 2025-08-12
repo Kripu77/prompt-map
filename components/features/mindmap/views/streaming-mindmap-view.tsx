@@ -1,40 +1,28 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Square, Pause, Play, Save } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useMindmapStore } from '@/lib/stores/mindmap-store';
 import { ReactFlowMindmapView } from './react-flow/ReactFlowMindmapView';
 
 interface StreamingMindmapViewProps {
   streamingContent: string;
-  isStreaming: boolean;
-  isComplete: boolean;
-  progress: {
+  className?: string;
+  isStreaming?: boolean;
+  isComplete?: boolean;
+  progress?: {
     wordCount: number;
     estimatedProgress: number;
   };
-  onStop: () => void;
+  onStop?: () => void;
   onSave?: () => void;
-  className?: string;
 }
 
 export function StreamingMindmapView({
   streamingContent,
-  isStreaming,
-  isComplete,
-  progress,
-  onStop,
-  onSave,
   className,
 }: StreamingMindmapViewProps) {
-  const { setMindmapRef } = useMindmapStore();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [isPaused, setIsPaused] = useState(false);
   const [displayContent, setDisplayContent] = useState('');
-
 
   useEffect(() => {
     if (!streamingContent) {
@@ -44,22 +32,6 @@ export function StreamingMindmapView({
     
     setDisplayContent(streamingContent);
   }, [streamingContent]);
-
-  useEffect(() => {
-    if (svgRef.current) {
-      setMindmapRef(svgRef.current);
-    }
-  }, [setMindmapRef]);
-
-  const togglePause = () => {
-    setIsPaused(!isPaused);
-  };
-
-  const handleSave = () => {
-    if (onSave) {
-      onSave();
-    }
-  };
 
   return (
     <div className={cn("relative w-full h-full", className)}>

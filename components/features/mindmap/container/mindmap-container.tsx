@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStreamingMindmap } from '@/hooks/use-streaming-mindmap';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
@@ -37,7 +37,6 @@ export function MindmapContainer() {
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [topicShiftDetected, setTopicShiftDetected] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
 
   const displayContent = streamingContent || mindmapData;
   const isGenerating = isStreaming || storeLoading;
@@ -184,8 +183,8 @@ export function MindmapContainer() {
         </div>
       </motion.div>
 
-      <div className="w-full h-[calc(100vh-5rem)] flex items-center justify-center pt-12 pb-24 sm:pt-16 sm:pb-28 relative overflow-hidden">
-        <div className="w-full h-full flex items-center justify-center max-w-[100%] sm:max-w-[90%] md:max-w-[85%] mx-auto relative z-10">
+      <div className="w-full h-[calc(100vh-5rem)] flex items-center justify-start pt-4 pb-8 relative overflow-hidden">
+        <div className="w-full h-full flex items-center justify-start relative z-10">
 
           <AnimatePresence mode="wait">
             {!displayContent && !isGenerating ? (
@@ -260,7 +259,7 @@ export function MindmapContainer() {
                   className="w-full max-w-2xl"
                 >
                   <Reasoning 
-                    className="w-full bg-card/30 backdrop-blur-sm border border-border/30 rounded-lg p-4" 
+                    className="w-full bg-card/30 backdrop-blur-sm border border-border/30 rounded-lg p-" 
                     isStreaming={isStreaming && !isComplete}
                     defaultOpen={true}
                   >

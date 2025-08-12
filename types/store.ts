@@ -1,9 +1,11 @@
 
+import { ReactFlowInstance } from '@xyflow/react';
+
 export interface MindmapState {
   prompt: string;
   isLoading: boolean;
   mindmapData: string;
-  mindmapRef: SVGSVGElement | null;
+  mindmapRef: ReactFlowInstance | null;
   isUserGenerated: boolean;
   isFollowUpMode: boolean;
   error: string | null;
@@ -15,7 +17,7 @@ export interface MindmapActions {
   setPrompt: (prompt: string) => void;
   setIsLoading: (isLoading: boolean) => void;
   setMindmapData: (data: string) => void;
-  setMindmapRef: (ref: SVGSVGElement) => void;
+  setMindmapRef: (ref: ReactFlowInstance) => void;
   setIsUserGenerated: (isGenerated: boolean) => void;
   setIsFollowUpMode: (isFollowUp: boolean) => void;
   setError: (error: string | null) => void;

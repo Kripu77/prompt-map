@@ -9,7 +9,7 @@ export default async function Home() {
   const userId = session?.user?.id;
 
   return (
-    <main className="flex-1 flex flex-col overflow-hidden relative">
+    <main className="flex-1 flex flex-col overflow-hidden">
       <MindmapContainer />
 
       <AIReasoningPanelWrapper />

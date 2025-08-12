@@ -58,7 +58,6 @@ export const Reasoning = memo(
       defaultProp: 0,
     });
 
-    const [hasAutoClosedRef, setHasAutoClosedRef] = useState(false);
     const [startTime, setStartTime] = useState<number | null>(null);
 
     // Track duration when streaming starts and ends
@@ -110,7 +109,6 @@ export type ReasoningTriggerProps = ComponentProps<
 export const ReasoningTrigger = memo(
   ({
     className,
-    title = 'Reasoning',
     children,
     ...props
   }: ReasoningTriggerProps) => {

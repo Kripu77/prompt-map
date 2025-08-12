@@ -1,7 +1,5 @@
 
 
-// Removed markmap-common dependency - using React Flow types instead
-
 
 export interface MindmapData {
   content: string;

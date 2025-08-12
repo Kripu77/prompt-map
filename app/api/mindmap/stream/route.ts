@@ -40,12 +40,11 @@ export async function POST(request: NextRequest) {
 
     const result = await streamingMindmapService.streamMindmapGeneration(payload, options);
     
-    return result.toUIMessageStreamResponse({
+    return result.toDataStreamResponse({
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'x-vercel-ai-ui-message-stream': 'v1',
       },
     });
 

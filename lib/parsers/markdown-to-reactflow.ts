@@ -36,7 +36,6 @@ export function parseMarkdownToTree(markdown: string): TreeNode {
   let root: TreeNode | null = null;
   let currentContent: string[] = [];
   let inCodeBlock = false;
-  let codeBlockLanguage = '';
 
   const processAccumulatedContent = (parentNode: TreeNode) => {
     if (currentContent.length === 0) return;
@@ -58,12 +57,10 @@ export function parseMarkdownToTree(markdown: string): TreeNode {
     if (trimmedLine.startsWith('```')) {
       if (!inCodeBlock) {
         inCodeBlock = true;
-        codeBlockLanguage = trimmedLine.substring(3).trim();
         currentContent.push(line);
       } else {
         inCodeBlock = false;
         currentContent.push(line);
-        codeBlockLanguage = '';
       }
       continue;
     }

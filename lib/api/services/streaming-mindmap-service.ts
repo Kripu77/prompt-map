@@ -8,7 +8,6 @@ import {
 import { webSearchTool } from '@/lib/tools/web-search-tool';
 import type { PromptPayload } from '@/types/api';
 import type { MindmapGenerationOptions } from './mindmap-service';
-import { tool } from 'ai';
 
 export class StreamingMindmapService {
   async streamMindmapGeneration(

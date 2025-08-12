@@ -8,7 +8,7 @@ const exa = new Exa(process.env.EXA_API_KEY);
 
 export const webSearchTool = tool({
   description: 'Search the web for current information on a specific query. Use this for weather, current events, recent data, or any time-sensitive information.',
-  inputSchema: z.object({
+  parameters: z.object({
     query: z.string().describe('The search query to run'),
   }),
   execute: async ({ query }) => {

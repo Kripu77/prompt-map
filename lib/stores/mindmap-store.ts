@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+import { ReactFlowInstance } from '@xyflow/react';
 import { initialMindMapValue } from '@/app/data';
 import type { MindmapStore, PromptHistoryItem } from '@/types/store';
 
@@ -42,7 +43,7 @@ export const useMindmapStore = create<MindmapStore>()(
           }, false, 'mindmap/setMindmapData');
         },
         
-        setMindmapRef: (ref: SVGSVGElement) => {
+        setMindmapRef: (ref: ReactFlowInstance) => {
           set({ mindmapRef: ref }, false, 'mindmap/setMindmapRef');
         },
         

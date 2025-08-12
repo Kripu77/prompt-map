@@ -5,11 +5,9 @@ import { motion, animate } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Brain, X, Search, ExternalLink, Globe, Lightbulb, Target, Zap, WrenchIcon, BookIcon } from "lucide-react"
+import { Brain, Target, Lightbulb, Search, Zap, Globe, BookIcon, ExternalLink, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { MindmapMode } from "@/lib/types/settings"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
 
 interface ToolCall {
   id: string
@@ -203,7 +201,7 @@ function parseReasoningContent(content: string): ParsedReasoningContent {
         })
 
         if (result.results && Array.isArray(result.results)) {
-          result.results.slice(0, 3).forEach((item: any) => {
+          result.results.slice(0, 3).forEach((item: { url?: string; title?: string; content?: string; snippet?: string }) => {
             if (item.url) {
               sources.push({
                 url: item.url,
@@ -254,7 +252,7 @@ function ToolDisplay({ toolCall, result }: { toolCall: ToolCall; result?: ToolRe
   // Only show a compact summary for web searches, hide raw JSON
   if (isWebSearch) {
     const query = toolCall.args.query as string
-    const resultCount = result?.result?.results ? (result.result.results as any[]).length : 0
+    const resultCount = result?.result?.results ? (result.result.results as unknown[]).length : 0
     
     return (
       <div className="not-prose mb-3 w-full rounded-lg border bg-muted/20 border-border/40 overflow-hidden">
@@ -269,7 +267,7 @@ function ToolDisplay({ toolCall, result }: { toolCall: ToolCall; result?: ToolRe
         </div>
         <div className="px-3 pb-3">
           <p className="text-xs text-muted-foreground">
-            Searched for: <span className="font-medium text-foreground">"{query}"</span>
+            Searched for: <span className="font-medium text-foreground">&quot;{query}&quot;</span>
           </p>
         </div>
       </div>
@@ -341,17 +339,18 @@ function SourcesDisplay({ sources }: { sources: Array<{ url: string; title?: str
   )
 }
 
-function ResponseDisplay({ content, isStreaming }: { content: string; isStreaming: boolean }) {
-  if (!content) return null
+// Remove unused ResponseDisplay component
+// function ResponseDisplay({ content, isStreaming }: { content: string; isStreaming: boolean }) {
+//   if (!content) return null
 
-  return (
-    <div className="prose prose-sm max-w-none text-foreground">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-        {content}
-      </ReactMarkdown>
-    </div>
-  )
-}
+//   return (
+//     <div className="prose prose-sm max-w-none text-foreground">
+//       <ReactMarkdown remarkPlugins={[remarkGfm]}>
+//         {content}
+//       </ReactMarkdown>
+//     </div>
+//   )
+// }
 
 interface AIReasoningPanelProps {
   reasoningContent?: string
@@ -369,7 +368,6 @@ export function AIReasoningPanel({
   onToggleVisibility,
   className,
   topic,
-  mode,
 }: AIReasoningPanelProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -610,14 +608,6 @@ export function AIReasoningPanel({
               <div>
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   AI Reasoning
-                  {mode && (
-                    <span className={cn(
-                      "text-[10px] px-2 py-0.5 rounded-full border",
-                      mode === 'lite' ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' : 'bg-primary/10 text-primary border-primary/30'
-                    )}>
-                      {mode === 'lite' ? 'Lite' : 'Comprehensive'}
-                    </span>
-                  )}
                 </CardTitle>
                 {topic && <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px] sm:max-w-none">{topic}</div>}
               </div>

@@ -75,16 +75,17 @@ class LLMClient {
         this.requestCount++;
         
         const result = await generateText({
-          model: this.client.chat(config.model) as any,
+          model: this.client.chat(config.model),
           messages: request.messages,
           temperature: config.temperature,
-          maxOutputTokens: config.maxTokens,
+          maxTokens: config.maxTokens,
           topP: config.topP,
           frequencyPenalty: config.frequencyPenalty,
           presencePenalty: config.presencePenalty,
           tools: config.tools,
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return this.formatResponse(result as any, config.model);
       } catch (error) {
         this.errorCount++;
