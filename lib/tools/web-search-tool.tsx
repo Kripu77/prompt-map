@@ -7,7 +7,6 @@ import 'dotenv/config';
 const exa = new Exa(process.env.EXA_API_KEY);
 
 export const webSearchTool = tool({
-  id: 'search.web' as const,
   description: 'Search the web for current information on a specific query. Use this for weather, current events, recent data, or any time-sensitive information.',
   parameters: z.object({
     query: z.string().describe('The search query to run'),

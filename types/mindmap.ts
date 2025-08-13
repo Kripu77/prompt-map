@@ -1,12 +1,10 @@
 
 
-import { INode } from 'markmap-common';
-
 
 export interface MindmapData {
   content: string;
   title?: string;
-  nodes?: INode;
+  nodes?: any; 
   metadata?: MindmapMetadata;
 }
 

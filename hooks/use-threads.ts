@@ -89,7 +89,7 @@ export function useThreads() {
     isAuthenticatedRef.current = isAuthenticated;
   }, [isAuthenticated]);
 
-  const createThread = useCallback(async (title: string, content: string, reasoning?: string) => {
+  const createThread = useCallback(async (title: string, content: string, reasoning?: string, reasoningDuration?: number) => {
     if (!isAuthenticatedRef.current) {
       toast.error('You must be signed in to save a thread');
       return null;
@@ -100,14 +100,16 @@ export function useThreads() {
       contentLength: content?.length || 0,
       reasoningLength: reasoning?.length || 0,
       hasReasoning: !!reasoning,
+      reasoningDuration,
       reasoningPreview: reasoning ? reasoning.substring(0, 100) + '...' : 'No reasoning'
     });
 
     try {
-      const result = await createThreadMutation.mutateAsync({ title, content, reasoning });
+      const result = await createThreadMutation.mutateAsync({ title, content, reasoning, reasoningDuration });
       console.log('Thread created successfully:', {
         threadId: result.thread.id,
-        hasReasoningInResult: !!result.thread.reasoning
+        hasReasoningInResult: !!result.thread.reasoning,
+        reasoningDuration: result.thread.reasoningDuration
       });
       return result.thread;
     } catch (err) {

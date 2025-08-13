@@ -7,24 +7,43 @@ import { createSystemMessage, createUserMessage, createAssistantMessage } from "
 export type MindmapMode = 'lite' | 'comprehensive';
 export type InfoType = 'current' | 'static' | 'mixed';
 
-// CENTRALIZED LOGIC COMPONENTS
 
-const CURRENCY_FRAMEWORK = {
-  current: [
+
+// CONSTANTS
+const CURRENCY_KEYWORDS = {
+  current: new Set([
     "current", "latest", "recent", "today", "2025", "now", "trending",
     "weather", "stock", "exchange", "sports", "news", "politics", 
     "market", "traffic", "breaking", "update", "policy"
-  ],
-  static: [
+  ]),
+  static: new Set([
     "history", "theory", "principle", "concept", "definition", 
     "classic", "fundamental", "basic", "traditional", "established"
-  ],
-  linkGuidance: {
-    current: "ALWAYS include source links using [text](URL) format",
-    static: "Include authoritative source links when available",
-    mixed: "ALWAYS include source links for current information"
+  ])
+} as const;
+
+const LINK_GUIDANCE = {
+  current: "ALWAYS include source links using [text](URL) format",
+  static: "Include authoritative source links when available",
+  mixed: "ALWAYS include source links for current information"
+} as const;
+
+const MODE_CONFIG = {
+  lite: {
+    branches: '3-5 main branches maximum',
+    subtopics: '2 subtopics per branch',
+    focus: 'Focus on core essentials',
+    format: 'Quick reference format',
+    description: 'Quick, focused mindmaps'
+  },
+  comprehensive: {
+    branches: '5-7 main branches',
+    subtopics: '3-4 subtopics per branch', 
+    focus: 'Comprehensive coverage',
+    format: 'Detailed exploration',
+    description: 'Detailed, comprehensive coverage'
   }
-};
+} as const;
 
 const CORE_PRINCIPLES = `
 **CLARITY**: Every topic immediately understandable
@@ -46,65 +65,93 @@ const FORMAT_RULES = `
 - Include relevant links using markdown format: [text](URL)
 - For web search results, always include source links
 - Support for rich text formatting within headers: **bold**, *italic*, ~~strikethrough~~, \`code\`
-- Support for mathematical expressions using KaTeX: $x = {-b \pm \sqrt{b^2-4ac} \over 2a}$
-- Support for code blocks with syntax highlighting
+- Support for mathematical expressions using KaTeX: 
+  * Use proper LaTeX syntax: $\\frac{a}{b}$ not $rac{a}{b}$
+  * Use \\times for multiplication: $a \\times b$ not $a imes b$
+  * Examples: $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$, $S = \\frac{\\text{Successful Days}}{\\text{Total Days}} \\times 100\\%$
+  * Always escape backslashes properly in LaTeX commands
+- Support for code blocks with proper markdown syntax:
+  \`\`\`language
+  code here
+  \`\`\`
 - Support for tables to display structured data
 `;
 
 function analyzeCurrency(text: string): InfoType {
   const lowerText = text.toLowerCase();
-  const currentScore = CURRENCY_FRAMEWORK.current.filter(term => lowerText.includes(term)).length;
-  const staticScore = CURRENCY_FRAMEWORK.static.filter(term => lowerText.includes(term)).length;
+  const currentScore = Array.from(CURRENCY_KEYWORDS.current).filter(term => lowerText.includes(term)).length;
+  const staticScore = Array.from(CURRENCY_KEYWORDS.static).filter(term => lowerText.includes(term)).length;
   
   if (currentScore > staticScore) return 'current';
   if (staticScore > currentScore) return 'static';
   return 'mixed';
 }
 
-function getWebSearchGuidance(infoType: InfoType): string {
-  switch (infoType) {
-    case 'current':
-      return `🔍 **WEB SEARCH MANDATORY**: You HAVE live internet access - ALWAYS search first for current information, then blend with knowledge.
+const WEB_SEARCH_TEMPLATES = {
+  current: `🔍 **WEB SEARCH MANDATORY**: You HAVE live internet access - ALWAYS search first for current information, then blend with knowledge.
 **Critical**: Use web search tool immediately for latest data, trends, and developments. You CAN access real-time information.
 **Integration**: Lead with current data, support with foundational concepts.
-**Links**: ALWAYS include source links from web search results using markdown format [text](URL). These links make the mindmap interactive.`;
-    case 'static':
-      return `🧠 **KNOWLEDGE-BASED**: Use existing knowledge primarily.
+**Links**: ${LINK_GUIDANCE.current}. These links make the mindmap interactive.`,
+  
+  static: `🧠 **KNOWLEDGE-BASED**: Use existing knowledge primarily.
 **Web Search**: You HAVE web search access - use it if unsure about recent developments or accuracy.
 **Integration**: Include recent developments if relevant.
-**Links**: When using web search, ALWAYS include source links using markdown format [text](URL) to make the mindmap interactive.`;
-    case 'mixed':
-      return `🔄 **HYBRID APPROACH**: You HAVE live internet access - ALWAYS use web search for current aspects, use knowledge for fundamentals.
+**Links**: When using web search, ${LINK_GUIDANCE.static} using markdown format [text](URL) to make the mindmap interactive.`,
+  
+  mixed: `🔄 **HYBRID APPROACH**: You HAVE live internet access - ALWAYS use web search for current aspects, use knowledge for fundamentals.
 **Critical**: When in doubt about currency or accuracy, use web search tool. You CAN get real-time data.
 **Integration**: Balance current data (40%) with established knowledge (60%).
-**Links**: ALWAYS include source links from web search results using markdown format [text](URL). These links make the mindmap interactive and provide attribution.`;
-  }
+**Links**: ${LINK_GUIDANCE.mixed} using markdown format [text](URL). These links make the mindmap interactive and provide attribution.`
+} as const;
+
+function getWebSearchGuidance(infoType: InfoType): string {
+  return WEB_SEARCH_TEMPLATES[infoType];
 }
+
+const THINKING_PROCESS_BASE = [
+  '**Topic Analysis**: Core aspects identification',
+  '**Currency Assessment**: Current vs. static information needs',
+  '**Information Strategy**: Web search decision + knowledge integration',
+  '**Link Integration**: Include source URLs from web search as markdown links',
+  '**Structure Planning**: Hierarchical organization',
+  '**Content Selection**: Essential points prioritization'
+] as const;
+
+const THINKING_PROCESS_EXTENSIONS = {
+  lite: ['**Lite Optimization**: Focus on 3-5 main branches, 2 subtopics each'],
+  comprehensive: [
+    '**Comprehensive Coverage**: 5-7 main branches, 3-4 subtopics each',
+    '**Quality Assurance**: Balance, clarity, and completeness check'
+  ]
+} as const;
 
 function getThinkingProcess(mode: MindmapMode): string {
-  const base = `
-1. **Topic Analysis**: Core aspects identification
-2. **Currency Assessment**: Current vs. static information needs
-3. **Information Strategy**: Web search decision + knowledge integration
-4. **Link Integration**: Include source URLs from web search as markdown links
-5. **Structure Planning**: Hierarchical organization
-6. **Content Selection**: Essential points prioritization`;
-
-  if (mode === 'lite') {
-    return base + `
-7. **Lite Optimization**: Focus on 3-5 main branches, 2 subtopics each`;
-  }
-  
-  return base + `
-7. **Comprehensive Coverage**: 5-7 main branches, 3-4 subtopics each
-8. **Quality Assurance**: Balance, clarity, and completeness check`;
+  const steps = [...THINKING_PROCESS_BASE, ...THINKING_PROCESS_EXTENSIONS[mode]];
+  return steps.map((step, index) => `${index + 1}. ${step}`).join('\n');
 }
 
-// SYSTEM PROMPTS
+// TEMPLATE CONSTANTS
+const COMMON_REQUIREMENTS = [
+  'Descriptive title (not "Mind Map" or "Overview")',
+  'Current information when relevant (use web search if needed)',
+  'Practical applications included',
+  'Accurate dates and temporal references',
+  'Include relevant links using markdown format [text](URL)',
+  'For web search results, ALWAYS include source links to make the mindmap interactive'
+] as const;
 
-export function getMindmapSystemPrompt(mode: MindmapMode = 'comprehensive', customDate?: Date): string {
-  const now = customDate || new Date();
-  const currentDateTime = now.toLocaleString('en-US', { 
+const QUALITY_STANDARDS = [
+  'Logical information flow',
+  'Balanced depth across branches',
+  'Practical, actionable content',
+  'Clear, jargon-free language',
+  'Current, verified information (use web search when needed)',
+  'Accurate dates and temporal references'
+] as const;
+
+// UTILITY FUNCTIONS
+function formatDateTime(date: Date): string {
+  return date.toLocaleString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
     month: 'long', 
@@ -114,6 +161,37 @@ export function getMindmapSystemPrompt(mode: MindmapMode = 'comprehensive', cust
     timeZone: 'UTC',
     timeZoneName: 'short' 
   });
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
+}
+
+function generateRequirements(mode: MindmapMode, additionalRequirements: string[] = []): string {
+  const modeConfig = MODE_CONFIG[mode];
+  const requirements = [
+    `- ${modeConfig.branches}`,
+    `- ${modeConfig.subtopics}`,
+    `- ${modeConfig.focus}`,
+    `- ${modeConfig.format}`,
+    ...additionalRequirements.map(req => `- ${req}`),
+    ...COMMON_REQUIREMENTS.map(req => `- ${req}`)
+  ];
+  return requirements.join('\n');
+}
+
+// SYSTEM PROMPTS
+
+export function getMindmapSystemPrompt(mode: MindmapMode = 'comprehensive', customDate?: Date): string {
+  const now = customDate || new Date();
+  const currentDateTime = formatDateTime(now);
 
   return `<role>
 You are a mindmapping personal assistant designed to help learners gain knowledge with visual clarity. As an expert knowledge organizer and mindmap specialist, you transform complex information into clear, hierarchical mindmaps using markdown format. Your purpose is to enhance learning through structured visual representation of information, making complex topics accessible and easy to understand.
@@ -124,7 +202,7 @@ Developed in Sydney, Australia, you embody the spirit of clear communication and
 <context>
 Current Date & Time: ${currentDateTime}
 Today's Year: ${now.getFullYear()}
-Mode: ${mode.toUpperCase()} (${mode === 'lite' ? 'Quick, focused mindmaps' : 'Detailed, comprehensive coverage'})
+Mode: ${mode.toUpperCase()} (${MODE_CONFIG[mode].description})
 </context>
 
 🌐 **LIVE DATA ACCESS CONFIRMED**: You CAN and DO have access to current, real-time information through web search. You are NOT limited to training data cutoffs.
@@ -175,26 +253,14 @@ ${FORMAT_RULES}
 </error_handling>
 
 <quality_standards>
-- ${mode === 'lite' ? 'Focused coverage of essentials' : 'Comprehensive topic coverage'}
-- Logical information flow
-- Balanced depth across branches
-- Practical, actionable content
-- Clear, jargon-free language
-- Current, verified information (use web search when needed)
-- Accurate dates and temporal references
+- ${MODE_CONFIG[mode].focus}
+${QUALITY_STANDARDS.map(standard => `- ${standard}`).join('\n')}
 </quality_standards>`;
 }
 
 function getTopicShiftSystemPrompt(customDate?: Date): string {
   const now = customDate || new Date();
-  const currentDate = now.toLocaleString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: 'short'
-  });
+  const currentDate = formatDate(now);
   const currentYear = now.getFullYear();
 
   return `<role>
@@ -280,19 +346,10 @@ ${thinkingProcess}
 </thinking_process>
 
 <requirements>
-${mode === 'lite' ? 
-  '- 3-5 main branches maximum\n- 2 subtopics per branch\n- Focus on core essentials\n- Quick reference format' :
-  '- 5-7 main branches\n- 3-4 subtopics per branch\n- Comprehensive coverage\n- Detailed exploration'
-}
-- Descriptive title (not "Mind Map" or "Overview")
-- Current information when relevant (use web search if needed)
-- Practical applications included
-- Accurate dates and temporal references
-- Include relevant links using markdown format [text](URL)
-- For web search results, ALWAYS include source links to make the mindmap interactive
+${generateRequirements(mode, ['Build upon previous context while maintaining independence'])}
 </requirements>`),
-    
-    // Enhanced few-shot examples
+     
+     // Enhanced few-shot examples
     createAssistantMessage(`# ${mode === 'lite' ? 'Digital Marketing Essentials' : 'Comprehensive Digital Marketing Strategy'}
 
 ## Content Marketing
@@ -458,19 +515,29 @@ ${thinkingProcess}
 </thinking_process>
 
 <fresh_start_requirements>
-- Completely new mindmap structure
-- No reference to previous topic
-- ${mode === 'lite' ? 'Focused, essential coverage' : 'Comprehensive exploration'}
-- Current information integration when relevant (use web search if needed)
-- Clear, descriptive title
-- Accurate dates and temporal references
-- Include relevant links using markdown format [text](URL)
-- For web search results, ALWAYS include source links to make the mindmap interactive
+${generateRequirements(mode, ['Completely new mindmap structure', 'No reference to previous topic'])}
 </fresh_start_requirements>`),
   ];
 }
 
 // ENHANCED UTILITIES
+
+const THINKING_TEMPLATE = `<reasoning>
+Think step-by-step:
+1. Core components identification
+2. Hierarchical organization strategy  
+3. Essential details for each component
+4. {{MODE_SPECIFIC}}
+5. Current information integration needs
+</reasoning>`;
+
+const CONTEXT_MAPPINGS = {
+  userExpertise: (value: string) => `**Audience**: ${value} level`,
+  purpose: (value: string) => `**Purpose**: ${value}`,
+  timeConstraint: (value: string) => `**Depth**: ${value}`,
+  format: (value: string) => `**Style**: ${value} approach`,
+  mode: (value: string) => `**Mode**: ${value} mindmap`
+} as const;
 
 export function enhancePromptWithContext(
   basePrompt: string,
@@ -482,27 +549,10 @@ export function enhancePromptWithContext(
     mode?: MindmapMode;
   }
 ): string {
-  const enhancements = [];
-  
-  if (context.userExpertise) {
-    enhancements.push(`**Audience**: ${context.userExpertise} level`);
-  }
-  
-  if (context.purpose) {
-    enhancements.push(`**Purpose**: ${context.purpose}`);
-  }
-  
-  if (context.timeConstraint) {
-    enhancements.push(`**Depth**: ${context.timeConstraint}`);
-  }
-  
-  if (context.format) {
-    enhancements.push(`**Style**: ${context.format} approach`);
-  }
-
-  if (context.mode) {
-    enhancements.push(`**Mode**: ${context.mode} mindmap`);
-  }
+  const enhancements = Object.entries(context)
+    .filter(([, value]) => value !== undefined && value !== null)
+    .map(([key, value]) => CONTEXT_MAPPINGS[key as keyof typeof CONTEXT_MAPPINGS]?.(value as string))
+    .filter(Boolean);
   
   return enhancements.length > 0 
     ? `${basePrompt}\n\n<customization>\n${enhancements.join('\n')}\n</customization>`
@@ -510,31 +560,29 @@ export function enhancePromptWithContext(
 }
 
 export function addChainOfThoughtPrompting(prompt: string, mode: MindmapMode = 'comprehensive'): string {
-  return `${prompt}
-
-<reasoning>
-Think step-by-step:
-1. Core components identification
-2. Hierarchical organization strategy  
-3. Essential details for each component
-4. ${mode === 'lite' ? 'Focused coverage priorities' : 'Comprehensive balance assurance'}
-5. Current information integration needs
-</reasoning>`;
+  const modeSpecific = mode === 'lite' ? 'Focused coverage priorities' : 'Comprehensive balance assurance';
+  const reasoning = THINKING_TEMPLATE.replace('{{MODE_SPECIFIC}}', modeSpecific);
+  return `${prompt}\n\n${reasoning}`;
 }
 
 // ERROR HANDLING UTILITIES
 
+const CLARIFICATION_OPTIONS = [
+  'Are you looking for practical applications?',
+  'Do you want theoretical foundations?',
+  'Are you interested in current trends?',
+  'Would you prefer a specific industry perspective?'
+] as const;
+
 export function createClarificationPrompt(ambiguousTopic: string): string {
-  return `The topic "${ambiguousTopic}" could be interpreted in multiple ways. Could you clarify what specific aspect you'd like me to focus on? For example:
-
-- Are you looking for practical applications?
-- Do you want theoretical foundations?
-- Are you interested in current trends?
-- Would you prefer a specific industry perspective?
-
-This will help me create the most relevant mindmap for your needs.`;
+  const options = CLARIFICATION_OPTIONS.map(option => `- ${option}`).join('\n');
+  return `The topic "${ambiguousTopic}" could be interpreted in multiple ways. Could you clarify what specific aspect you'd like me to focus on? For example:\n\n${options}\n\nThis will help me create the most relevant mindmap for your needs.`;
 }
 
 export function createFallbackPrompt(topic: string, mode: MindmapMode): string {
   return `I'll create a ${mode} mindmap for "${topic}" based on available information. If you need more current data or specific aspects covered, please let me know and I can enhance it further.`;
+}
+
+export function createErrorPrompt(error: string): string {
+  return `I encountered an issue while processing your request: ${error}\n\nLet me try a different approach. Could you rephrase your question or provide additional context about what you'd like to explore in the mindmap?`;
 }

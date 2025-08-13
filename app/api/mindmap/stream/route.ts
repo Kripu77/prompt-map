@@ -42,10 +42,9 @@ export async function POST(request: NextRequest) {
     
     return result.toDataStreamResponse({
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'x-vercel-ai-data-stream': 'v1',
       },
       sendReasoning: true,
     });

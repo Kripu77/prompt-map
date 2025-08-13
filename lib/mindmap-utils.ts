@@ -1,355 +1,185 @@
-import { Markmap } from 'markmap-view';
-import { RefObject } from 'react';
-import { transformer } from './markmap';
-import { toast } from 'sonner';
-import { addNodeBoxes } from './mindmap-node-boxes';
+import { toPng, toSvg } from 'html-to-image';
+import { ReactFlowInstance, Node } from '@xyflow/react';
 
-// Theme-related utilities
-export const applyThemeStyles = (
-  svg: SVGSVGElement,
-  theme: string | undefined
-) => {
-  // Set SVG color based on theme
-  svg.style.color = theme === 'dark' ? 'white' : 'black';
-
-  // Apply to all text elements
-  const textElements = svg.querySelectorAll('text');
-  textElements.forEach(el => {
-    el.style.fill = theme === 'dark' ? 'white' : 'black';
-    el.setAttribute('fill', theme === 'dark' ? 'white' : 'black');
-  });
-
-  // Add ID for better CSS targeting if not already present
-  if (!svg.id) {
-    svg.id = 'mindmap-svg';
+/**
+ * Export mindmap as PNG image
+ */
+export async function exportMindmap(
+  reactFlowInstance: ReactFlowInstance | null,
+  theme?: string
+): Promise<void> {
+  if (!reactFlowInstance) {
+    console.warn('React Flow instance not available for export');
+    return;
   }
 
-  // Add direct style for theme-specific colors
-  const existingStyle = document.getElementById('mindmap-theme-style');
-  if (existingStyle) {
-    document.head.removeChild(existingStyle);
-  }
-
-  const textStyle = document.createElement('style');
-  textStyle.id = 'mindmap-theme-style';
-  textStyle.textContent = `
-    #mindmap-svg text, #mindmap-svg g {
-      fill: ${theme === 'dark' ? 'white' : 'black'} !important;
-      color: ${theme === 'dark' ? 'white' : 'black'} !important;
-    }
-  `;
-  document.head.appendChild(textStyle);
-  
-  // Add boxes around nodes
-  addNodeBoxes(svg, theme);
-};
-
-// Enhanced fit function that properly scales the content based on its size
-export const fitContent = (
-  svg: SVGSVGElement | null
-) => {
-  if (!svg) return;
-  
   try {
-    // Define a type for the expected data structure
-    interface MarkmapData {
-      fit: () => void;
+    // Get the React Flow viewport element
+    const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
+    if (!viewport) {
+      console.warn('React Flow viewport not found');
+      return;
     }
-    
-    const svgWithData = svg as SVGSVGElement & { __data__?: MarkmapData };
-    const markmapDataObj = svgWithData.__data__;
-    
-    if (markmapDataObj?.fit && typeof markmapDataObj.fit === 'function') {
-      markmapDataObj.fit();
-    }
-  } catch (error) {
-    console.error('Error fitting content:', error);
-  }
-};
 
-// Initialize the markmap with proper theme handling
-export const initializeMarkmap = (
-  data: string,
-  svgRef: RefObject<SVGSVGElement | null>,
-  markmapRef: RefObject<Markmap | null>,
-  containerRef: RefObject<HTMLDivElement | null>,
-  theme: string | undefined,
-) => {
-  if (!svgRef.current) return;
-  
-  if (!markmapRef.current) {
-    // Create the markmap instance
-    const mm = Markmap.create(svgRef.current);
-    
-    // Store in ref
-    if ('current' in markmapRef) {
-      markmapRef.current = mm;
+    // Get the bounds of all nodes to determine the export area
+    const nodes = reactFlowInstance.getNodes();
+    if (nodes.length === 0) {
+      console.warn('No nodes to export');
+      return;
     }
-  }
-  
-  // Apply theme styles
-  applyThemeStyles(svgRef.current, theme);
-  
-  // Transform and set data
-  const { root } = transformer.transform(data);
-  markmapRef.current?.setData(root);
-  
-  // Ensure the mindmap is properly scaled and centered
-  setTimeout(() => {
-    if (markmapRef.current) {
-      fitContent(svgRef.current);
+
+    // Calculate bounds
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach((node: Node) => {
+      const x = node.position.x;
+      const y = node.position.y;
+      const width = node.width || 200;
+      const height = node.height || 100;
       
-      // Additional check after a brief delay to ensure proper rendering
-      setTimeout(() => {
-        if (markmapRef.current) {
-          fitContent(svgRef.current);
-        }
-      }, 500);
-    }
-  }, 100);
-};
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + width);
+      maxY = Math.max(maxY, y + height);
+    });
 
-// Export the mindmap as an image
-export function exportMindmap(
-  svg: SVGSVGElement | null,
-  theme: string | undefined,
-  title?: string
-) {
-  if (!svg || !svg.parentElement) return;
-  
-  try {
-    // Get current scroll position
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
-    
-    // Get the title from document if not provided
-    if (!title) {
-      const titleElement = document.querySelector('h1');
-      if (titleElement) {
-        title = titleElement.textContent || 'Mind Map';
-      } else {
-        title = 'Mind Map';
-      }
-    }
-    
-    // Create a temporary container
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.top = '0';
-    tempContainer.style.left = '0';
-    // Make it wider to accommodate the title and padding
-    tempContainer.style.width = `${svg.clientWidth + 100}px`; // Add extra width padding
-    // Add height for title and padding
-    tempContainer.style.height = `${svg.clientHeight + 150}px`; // Extra space for title and padding
-    tempContainer.style.backgroundColor = theme === 'dark' ? '#000' : '#fff';
-    tempContainer.style.zIndex = '-1000';
-    tempContainer.style.visibility = 'hidden';
-    tempContainer.style.overflow = 'visible'; // Ensure we don't clip any content
-    tempContainer.style.display = 'flex';
-    tempContainer.style.flexDirection = 'column';
-    tempContainer.style.alignItems = 'center';
-    tempContainer.style.padding = '60px 40px'; // Increased padding
-    
-    // Add the title
-    const titleDiv = document.createElement('div');
-    titleDiv.textContent = title;
-    titleDiv.style.fontSize = '28px'; // Increased font size
-    titleDiv.style.fontWeight = 'bold';
-    titleDiv.style.marginBottom = '30px'; // More space between title and content
-    titleDiv.style.color = theme === 'dark' ? 'white' : 'black';
-    titleDiv.style.fontFamily = 'sans-serif';
-    titleDiv.style.textAlign = 'center';
-    titleDiv.style.width = '100%';
-    tempContainer.appendChild(titleDiv);
-    
-    // Create an SVG container div to maintain layout
-    const svgContainer = document.createElement('div');
-    svgContainer.style.flex = '1';
-    svgContainer.style.width = '100%';
-    svgContainer.style.display = 'flex';
-    svgContainer.style.alignItems = 'center';
-    svgContainer.style.justifyContent = 'center';
-    
-    // Clone the SVG with its data
-    const clonedSvg = svg.cloneNode(true) as SVGSVGElement;
-    clonedSvg.style.width = '100%';
-    clonedSvg.style.height = '100%';
-    clonedSvg.style.maxWidth = 'none';
-    clonedSvg.style.maxHeight = 'none';
-    clonedSvg.style.overflow = 'visible';
-    
-    // Get a more accurate bounding box of all content
-    const bbox = svg.getBBox();
-    // Add padding to the viewBox
-    const padding = Math.max(bbox.width, bbox.height) * 0.1; // 10% padding
-    
-    // Set SVG viewBox attribute with padding to ensure entire content is captured
-    clonedSvg.setAttribute('viewBox', 
-      `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding*2} ${bbox.height + padding*2}`);
-    
-    // Make sure all elements are visible
-    const allElements = clonedSvg.querySelectorAll('*');
-    allElements.forEach(el => {
-      if (el instanceof SVGElement) {
-        el.style.visibility = 'visible';
-        el.style.opacity = '1';
-      }
+    // Add padding
+    const padding = 50;
+    const exportWidth = maxX - minX + (padding * 2);
+    const exportHeight = maxY - minY + (padding * 2);
+
+    // Export as PNG
+    const dataUrl = await toPng(viewport, {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+      width: exportWidth,
+      height: exportHeight,
+      style: {
+        transform: `translate(${-minX + padding}px, ${-minY + padding}px)`,
+      },
     });
-    
-    // Set text color based on theme
-    const textColor = theme === 'dark' ? 'white' : 'black';
-    const textElements = clonedSvg.querySelectorAll('text');
-    textElements.forEach(textEl => {
-      textEl.style.fill = textColor;
-      textEl.setAttribute('fill', textColor);
-    });
-    
-    // Set path colors for lines
-    const pathElements = clonedSvg.querySelectorAll('path');
-    pathElements.forEach(pathEl => {
-      // Keep original stroke color
-      if (pathEl.getAttribute('stroke')) {
-        pathEl.style.strokeOpacity = '1';
-      }
-    });
-    
-    // Add SVG to the container
-    svgContainer.appendChild(clonedSvg);
-    tempContainer.appendChild(svgContainer);
-    document.body.appendChild(tempContainer);
-    
-    // Force browser to process layout
-    void tempContainer.offsetWidth;
-    
-    // Use html-to-image library
-    import('html-to-image').then(({ toPng }) => {
-      toPng(tempContainer, { 
-        backgroundColor: theme === 'dark' ? '#000' : '#fff',
-        quality: 1,
-        pixelRatio: 2, // For higher quality
-        width: tempContainer.clientWidth,
-        height: tempContainer.clientHeight,
-        style: {
-          // Preserve all styles
-          transform: 'none',
-          overflow: 'visible'
-        }
-      })
-        .then(dataUrl => {
-          // Create a sanitized filename from the title
-          const sanitizedTitle = title
-            ? title.replace(/[^a-z0-9]/gi, '_').toLowerCase().substring(0, 30)
-            : 'mindmap';
-            
-          const link = document.createElement('a');
-          link.download = `${sanitizedTitle}.png`;
-          link.href = dataUrl;
-          link.click();
-          
-          toast.success('Mind map exported successfully');
-        })
-        .catch((error) => {
-          console.error('Error generating PNG:', error);
-          toast.error('Failed to export mind map');
-        })
-        .finally(() => {
-          document.body.removeChild(tempContainer);
-          // Restore scroll position
-          window.scrollTo(scrollX, scrollY);
-        });
-    });
+
+    // Create download link
+    const link = document.createElement('a');
+    link.download = `mindmap-${new Date().toISOString().split('T')[0]}.png`;
+    link.href = dataUrl;
+    link.click();
   } catch (error) {
-    console.error('Error exporting mindmap:', error);
-    toast.error('Failed to export mind map');
+    console.error('Failed to export mindmap:', error);
   }
 }
 
-// Handle zoom operations
-export const zoomIn = (
-  svg: SVGSVGElement | null,
-  factor: number = 1.25
-) => {
-  if (!svg) return;
-  
-  try {
-    // Define a type for the data structure
-    interface MarkmapData {
-      zoom?: {
-        transform: Record<string, unknown>;
-        scaleBy: (element: SVGSVGElement, factor: number) => void;
-      };
-      rescale?: (factor: number) => void;
-    }
-
-    const svgWithData = svg as SVGSVGElement & { __data__?: MarkmapData };
-    const markmapDataObj = svgWithData.__data__;
-    
-    if (markmapDataObj?.zoom && typeof markmapDataObj.zoom.scaleBy === 'function') {
-      // Scale without referencing k
-      markmapDataObj.zoom.scaleBy(svg, factor);
-    } else if (markmapDataObj?.rescale && typeof markmapDataObj.rescale === 'function') {
-      markmapDataObj.rescale(factor);
-    }
-  } catch (error) {
-    console.error('Error zooming in:', error);
+/**
+ * Export mindmap as SVG
+ */
+export async function exportMindmapAsSvg(
+  reactFlowInstance: ReactFlowInstance | null,
+  theme?: string
+): Promise<void> {
+  if (!reactFlowInstance) {
+    console.warn('React Flow instance not available for export');
+    return;
   }
-};
 
-export const zoomOut = (
-  svg: SVGSVGElement | null,
-  factor: number = 0.8
-) => {
-  if (!svg) return;
-  
   try {
-    // Define a type for the data structure
-    interface MarkmapData {
-      zoom?: {
-        transform: Record<string, unknown>;
-        scaleBy: (element: SVGSVGElement, factor: number) => void;
-      };
-      rescale?: (factor: number) => void;
+    const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
+    if (!viewport) {
+      console.warn('React Flow viewport not found');
+      return;
     }
 
-    const svgWithData = svg as SVGSVGElement & { __data__?: MarkmapData };
-    const markmapDataObj = svgWithData.__data__;
-    
-    if (markmapDataObj?.zoom && typeof markmapDataObj.zoom.scaleBy === 'function') {
-      // Scale without referencing k
-      markmapDataObj.zoom.scaleBy(svg, factor);
-    } else if (markmapDataObj?.rescale && typeof markmapDataObj.rescale === 'function') {
-      markmapDataObj.rescale(factor);
+    const nodes = reactFlowInstance.getNodes();
+    if (nodes.length === 0) {
+      console.warn('No nodes to export');
+      return;
     }
-  } catch (error) {
-    console.error('Error zooming out:', error);
-  }
-};
 
-// Handle fullscreen toggling
-export const toggleFullscreen = (
-  element: HTMLElement | null
-) => {
-  if (!element) return;
-  
-  try {
-    if (!document.fullscreenElement) {
-      // Add current theme class to the element before entering fullscreen
-      const isDarkTheme = document.documentElement.classList.contains('dark');
+    // Calculate bounds
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach((node: Node) => {
+      const x = node.position.x;
+      const y = node.position.y;
+      const width = node.width || 200;
+      const height = node.height || 100;
       
-      // Clear existing theme classes and add the current one
-      element.classList.remove('light-theme', 'dark-theme');
-      element.classList.add(isDarkTheme ? 'dark-theme' : 'light-theme');
-      
-      // Request fullscreen
-      element.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`);
-      });
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
-    }
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + width);
+      maxY = Math.max(maxY, y + height);
+    });
+
+    const padding = 50;
+    const exportWidth = maxX - minX + (padding * 2);
+    const exportHeight = maxY - minY + (padding * 2);
+
+    // Export as SVG
+    const dataUrl = await toSvg(viewport, {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+      width: exportWidth,
+      height: exportHeight,
+      style: {
+        transform: `translate(${-minX + padding}px, ${-minY + padding}px)`,
+      },
+    });
+
+    // Create download link
+    const link = document.createElement('a');
+    link.download = `mindmap-${new Date().toISOString().split('T')[0]}.svg`;
+    link.href = dataUrl;
+    link.click();
   } catch (error) {
-    console.error('Error toggling fullscreen:', error);
+    console.error('Failed to export mindmap as SVG:', error);
   }
-}; 
+}
+
+/**
+ * Export mindmap data as JSON
+ */
+export function exportMindmapAsJson(
+  reactFlowInstance: ReactFlowInstance | null
+): void {
+  if (!reactFlowInstance) {
+    console.warn('React Flow instance not available for export');
+    return;
+  }
+
+  try {
+    const nodes = reactFlowInstance.getNodes();
+    const edges = reactFlowInstance.getEdges();
+    
+    const mindmapData = {
+      nodes,
+      edges,
+      viewport: reactFlowInstance.getViewport(),
+      exportedAt: new Date().toISOString(),
+    };
+
+    const dataStr = JSON.stringify(mindmapData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.download = `mindmap-data-${new Date().toISOString().split('T')[0]}.json`;
+    link.href = url;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Failed to export mindmap as JSON:', error);
+  }
+}
+
+// Legacy function stubs for backward compatibility
+export function zoomIn() {
+  console.warn('zoomIn function is deprecated. Use React Flow controls instead.');
+}
+
+export function zoomOut() {
+  console.warn('zoomOut function is deprecated. Use React Flow controls instead.');
+}
+
+export function toggleFullscreen() {
+  console.warn('toggleFullscreen function is deprecated. Use React Flow controls instead.');
+}
+
+export function fitContent() {
+  console.warn('fitContent function is deprecated. Use React Flow fitView instead.');
+}

@@ -282,12 +282,12 @@ export function ThreadsSidebar() {
         setError(null);
         setIsOpen(false);
         
-        // Restore reasoning data if available
+        // Restore reasoning data if available (but don't auto-open panel)
         if (loadedThread.reasoning) {
-          setReasoningContent(loadedThread.reasoning);
-          showForSavedThread();
+          console.log('Loading thread with reasoning duration:', loadedThread.reasoningDuration);
+          setReasoningContent(loadedThread.reasoning, loadedThread.reasoningDuration);
         } else {
-          setReasoningContent('');
+          setReasoningContent('', undefined);
         }
         
         console.log('Thread loaded successfully:', loadedThread.title);
@@ -488,4 +488,3 @@ export function ThreadsSidebar() {
     </>
   );
 }
-

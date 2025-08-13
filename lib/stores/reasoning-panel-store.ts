@@ -4,13 +4,14 @@ import { persist } from 'zustand/middleware';
 interface ReasoningPanelState {
   isVisible: boolean;
   reasoningContent: string;
+  reasoningDuration?: number; // Duration of reasoning process in seconds
   isStreaming: boolean;
   currentTopic?: string;
   isAutoVisible: boolean; // New: tracks if panel is auto-shown during generation
   
   // Actions
   setVisible: (visible: boolean) => void;
-  setReasoningContent: (content: string) => void;
+  setReasoningContent: (content: string, duration?: number) => void;
   appendReasoningContent: (content: string) => void;
   setStreaming: (streaming: boolean) => void;
   setCurrentTopic: (topic?: string) => void;
@@ -26,13 +27,14 @@ export const useReasoningPanelStore = create<ReasoningPanelState>()(
     (set, get) => ({
       isVisible: false,
       reasoningContent: '',
+      reasoningDuration: undefined,
       isStreaming: false,
       currentTopic: undefined,
       isAutoVisible: false,
       
       setVisible: (visible) => set({ isVisible: visible }),
       
-      setReasoningContent: (content) => set({ reasoningContent: content }),
+      setReasoningContent: (content, duration) => set({ reasoningContent: content, reasoningDuration: duration }),
       
       appendReasoningContent: (content) => set((state) => ({ 
         reasoningContent: state.reasoningContent + content 
@@ -41,22 +43,17 @@ export const useReasoningPanelStore = create<ReasoningPanelState>()(
       setStreaming: (streaming) => {
         set({ isStreaming: streaming });
         
-        // Auto-show panel when streaming starts, auto-hide when it stops
-        if (streaming) {
-          set({ isVisible: true, isAutoVisible: true });
-        } else {
-          // Only auto-hide if it was auto-shown
-          const state = get();
-          if (state.isAutoVisible) {
-            set({ isVisible: false, isAutoVisible: false });
-          }
-        }
+        // Don't auto-show panel when streaming starts - let user control visibility
+        // if (streaming) {
+        //   set({ isVisible: true, isAutoVisible: true });
+        // }
       },
       
       setCurrentTopic: (topic) => set({ currentTopic: topic }),
       
       clearReasoning: () => set({ 
         reasoningContent: '', 
+        reasoningDuration: undefined,
         isStreaming: false,
         currentTopic: undefined 
       }),

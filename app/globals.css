@@ -4,74 +4,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Force markmap text to be visible in dark mode by default */
-g.markmap-node > text,
-.markmap-node-text,
-svg.markmap text {
-  fill: white !important;
-  color: white !important;
-}
 
-/* Only change to black in light mode */
-:root:not(.dark) g.markmap-node > text,
-:root:not(.dark) .markmap-node-text,
-:root:not(.dark) svg.markmap text {
-  fill: black !important;
-  color: black !important;
-}
 
-/* Force markmap text to be visible */
-.markmap text {
-  fill: black !important;
-  font-family: var(--font-sans);
-}
 
-.dark .markmap text {
-  fill: white !important;
-}
-
-/* Fix markmap text styles */
-svg.markmap g.markmap-node > text {
-  font-family: var(--font-sans);
-  fill: black !important;
-}
-
-.dark svg.markmap g.markmap-node > text {
-  fill: white !important;
-}
-
-/* Ensure node text is properly visible */
-svg.markmap .markmap-node-text {
-  fill: black !important;
-  font-family: var(--font-sans);
-}
-
-.dark svg.markmap .markmap-node-text {
-  fill: white !important;
-}
-
-/* Support styling for the node background boxes */
-svg.markmap g.markmap-node {
-  position: relative;
-}
-
-/* Style for the background rectangles */
-svg.markmap .markmap-node-bg {
-  pointer-events: none; /* Allow clicks to pass through to text */
-}
-
-/* Ensure text is on top and doesn't have a default background */
-svg.markmap g.markmap-node text {
-  background: transparent !important;
-  position: relative;
-  z-index: 2;
-}
-
-/* Style based on node level */
-svg.markmap g.markmap-node.markmap-node-depth-1 text {
-  font-weight: 600 !important;
-  padding: 6px 10px !important;
-}
 
 @theme {
   --font-sans: var(--font-geist-sans);
@@ -197,27 +132,3 @@ svg.markmap g.markmap-node.markmap-node-depth-1 text {
   }
 }
 
-/* Ensure the draggable toolbar renders correctly when outside its container */
-.draggable-mindmap-toolbar {
-  /* Create a proper stacking context */
-  z-index: 50;
-  /* Ensure good visibility */
-  background-color: hsl(var(--background) / 0.97);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  /* Better shadows for depth */
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06);
-  /* Force hardware acceleration */
-  transform: translate3d(0, 0, 0);
-  will-change: transform;
-  /* Fix any overflow issues */
-  overflow: visible;
-  /* Ensure proper isolation */
-  isolation: isolate;
-}
-
-.dark .draggable-mindmap-toolbar {
-  background-color: hsl(var(--background) / 0.97);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25), 0 4px 10px rgba(0, 0, 0, 0.15);
-  border-color: rgba(255, 255, 255, 0.08);
-}
