@@ -28,7 +28,7 @@ export function SidePanelToggle({ className }: SidePanelToggleProps) {
       variant="outline"
       size="sm"
       className={cn(
-        "fixed right-4 top-1/2 -translate-y-1/2 z-40 h-12 w-12 p-0 rounded-full shadow-lg border-2 bg-background/95 backdrop-blur-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200",
+        "fixed  right-4 top-1/2 -translate-y-1/2 z-40 h-12 w-12 p-0 rounded-full shadow-lg border-2 bg-background/95 backdrop-blur-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200",
         "hover:scale-105 active:scale-95",
         isOpen && `right-[calc(${width}vw+1rem)]`,
         className

@@ -136,7 +136,7 @@ export function BaseNode({
         />
       )}
       
-      <div className="absolute inset-0 flex items-center justify-center p-3">
+      <div className="absolute inset-0 flex items-center justify-center p-3 ">
         <div className="w-full h-full flex items-center justify-center">
           <div ref={contentRef} className="w-full h-full flex items-center justify-center text-center break-words overflow-hidden">
             <MarkdownRenderer 

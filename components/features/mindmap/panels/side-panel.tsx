@@ -7,7 +7,7 @@ import { useStreamingMindmap } from '@/hooks/use-streaming-mindmap';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
 import { useUserSettings } from '@/hooks/use-user-settings';
 import { useReasoningPanelStore } from '@/lib/stores/reasoning-panel-store';
-import { RichTextEditor } from '../editors/rich-text-editor';
+import { MindmapRichTextEditor } from '../editors/mindmap-rich-text-editor';
 import { PromptInput } from '../controls/prompt-input';
 import {
   Sheet,
@@ -152,43 +152,44 @@ export function SidePanel() {
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent 
         side="right" 
-        className="p-0 border-l overflow-hidden"
+        className="p-0 border-l overflow-hidden w-full sm:w-auto !h-screen sm:!h-full"
         style={{ 
-          width: `${width}vw`,
+          width: `min(100vw, ${width}vw)`,
           maxWidth: 'none',
           minWidth: '300px'
         }}
         hideCloseButton
       >
-        {/* Resize Handle */}
+        {/* Resize Handle - Hidden on mobile */}
         <div
           ref={resizeRef}
-          className="absolute left-0 top-0 bottom-0 w-3 bg-transparent hover:bg-slate-200/30 cursor-col-resize z-50 group flex items-center justify-center"
+          className="absolute left-0 top-0 bottom-0 w-3 bg-transparent hover:bg-slate-200/30 cursor-col-resize z-50 group flex items-center justify-center hidden sm:flex"
           onMouseDown={handleMouseDown}
           style={{ left: '-1px' }}
         >
           <div className="w-1 h-12  transition-colors rounded-full opacity-60 group-hover:opacity-100"></div>
         </div>
-        <SheetHeader className="px-6 py-4 border-b">
+        <SheetHeader className="px-3 sm:px-6 py-3 sm:py-4 border-b">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5" />
-              <SheetTitle className="text-lg font-semibold">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+              <SheetTitle className="text-base sm:text-lg font-semibold">
                 Mindmap Editor
               </SheetTitle>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               {/* Save button */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleSave}
                 disabled={!canSave || isSaving}
-                className="h-8 px-3"
+                className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm"
               >
-                <Save className="h-4 w-4 mr-1" />
-                {isSaving ? 'Saving...' : 'Save'}
+                <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>
+                <span className="sm:hidden">{isSaving ? '...' : 'Save'}</span>
               </Button>
               
               {/* Close button */}
@@ -196,7 +197,7 @@ export function SidePanel() {
                 variant="ghost"
                 size="sm"
                 onClick={handleClose}
-                className="h-8 w-8 p-0"
+                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -210,12 +211,16 @@ export function SidePanel() {
         <div className="flex-1 overflow-hidden flex flex-col relative">
           {/* Lexical Editor Section */}
           <div className="flex-1 overflow-hidden min-h-0">
-            <RichTextEditor className="h-full" streamingContent={streamingContent} isStreaming={isStreaming} />
+            <MindmapRichTextEditor 
+              className="h-full" 
+              streamingContent={streamingContent} 
+              isStreaming={isStreaming}
+            />
           </div>
           
           {/* Enhanced Prompt Input Section */}
           <div className="bg-background/60 backdrop-blur-sm border-t border-border/20">
-            <div className="px-6 py-4">
+            <div className="px-3 sm:px-6 py-3 sm:py-4">
               {/* AI Reasoning Section - shown in place of Prompt Map label */}
               <AnimatePresence>
                 {reasoningContent ? (

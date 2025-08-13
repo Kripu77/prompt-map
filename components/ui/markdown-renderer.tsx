@@ -45,13 +45,13 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
             <p className="text-3xl leading-relaxed mb-2 text-foreground break-words">{children}</p>
           ),
           ul: ({ children }) => (
-            <ul className="text-sm list-disc list-inside mb-2 space-y-1 text-foreground">{children}</ul>
+            <ul className="text-3xl list-disc list-inside mb-2 space-y-1 text-foreground">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="text-sm list-decimal list-inside mb-2 space-y-1 text-foreground">{children}</ol>
+            <ol className="text-3xl list-decimal list-inside mb-2 space-y-1 text-foreground">{children}</ol>
           ),
           li: ({ children }) => (
-            <li className="text-sm text-foreground leading-relaxed">{children}</li>
+            <li className="text-3xl text-foreground leading-relaxed">{children}</li>
           ),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           code: ({ className, children, ...props }: any) => {
