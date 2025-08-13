@@ -57,10 +57,9 @@ class StreamingLLMClient {
         maxOutputTokens: config.maxOutputTokens,
         topP: config.topP,
         tools: config.tools,
-        experimental_providerMetadata: config.includeReasoning ? {
-          openrouter: {
-            reasoning: true,
-          },
+        reasoning: config.includeReasoning ? {
+          enabled: true,
+          effort: "medium"
         } : undefined,
         onError: ({ error }: { error: unknown }) => {
           console.error('StreamText error occurred:', error);

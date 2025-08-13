@@ -339,18 +339,6 @@ function SourcesDisplay({ sources }: { sources: Array<{ url: string; title?: str
   )
 }
 
-// Remove unused ResponseDisplay component
-// function ResponseDisplay({ content, isStreaming }: { content: string; isStreaming: boolean }) {
-//   if (!content) return null
-
-//   return (
-//     <div className="prose prose-sm max-w-none text-foreground">
-//       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-//         {content}
-//       </ReactMarkdown>
-//     </div>
-//   )
-// }
 
 interface AIReasoningPanelProps {
   reasoningContent?: string

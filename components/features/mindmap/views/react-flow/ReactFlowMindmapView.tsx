@@ -42,16 +42,14 @@ function AutoZoomHandler({ nodes, mindmapData }: AutoZoomHandlerProps) {
   const autoZoomToRoot = useCallback(() => {
     if (nodes.length === 0) return;
 
-    const rootNode = nodes.find(node => node.type === 'root') || nodes[0];
-    
-    if (rootNode) {
-      fitView({
-        nodes: [rootNode],
-        padding: 0.1,
-        maxZoom: 0.4,
-        duration: 800,
-      });
-    }
+    // Show all nodes for better initial view with minimal padding
+    fitView({
+      padding: 0.05,
+      maxZoom: 1.0,
+      minZoom: 0.2,
+      duration: 600,
+      includeHiddenNodes: false,
+    });
   }, [nodes, fitView]);
 
   useEffect(() => {
@@ -59,7 +57,7 @@ function AutoZoomHandler({ nodes, mindmapData }: AutoZoomHandlerProps) {
       const timeoutId = setTimeout(() => {
         autoZoomToRoot();
         hasAutoZoomedRef.current = true;
-      }, 300);
+      }, 100); // Reduced delay for faster initial display
       
       return () => clearTimeout(timeoutId);
     }
@@ -71,7 +69,7 @@ function AutoZoomHandler({ nodes, mindmapData }: AutoZoomHandlerProps) {
     if (mindmapData && mindmapData !== previousMindmapDataRef.current && nodes.length > 0) {
       const timeoutId = setTimeout(() => {
         autoZoomToRoot();
-      }, 200);
+      }, 100); // Reduced delay for faster display
       
       previousMindmapDataRef.current = mindmapData;
       return () => clearTimeout(timeoutId);
@@ -103,6 +101,7 @@ function ReactFlowInner({ mindmapData, nodes, edges, onNodesChange, onEdgesChang
   const { setMindmapRef } = useMindmapStore();
   const reactFlowInstance = useReactFlow();
   const { theme } = useTheme();
+  const mindmapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (reactFlowInstance) {
@@ -125,48 +124,50 @@ function ReactFlowInner({ mindmapData, nodes, edges, onNodesChange, onEdgesChang
   const handleFullscreen = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen();
-    } else {
-      document.documentElement.requestFullscreen();
+    } else if (mindmapContainerRef.current) {
+      mindmapContainerRef.current.requestFullscreen();
     }
   };
 
   const handleRefresh = () => {
     reactFlowInstance?.fitView({ 
-      padding: REACT_FLOW_OPTIONS.FIT_VIEW_PADDING, 
-      maxZoom: REACT_FLOW_OPTIONS.MAX_ZOOM,
+      padding: 0.05, 
+      maxZoom: 1.0,
       includeHiddenNodes: true 
     });
   };
 
   return (
     <>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        fitView
-        fitViewOptions={{ 
-          padding: REACT_FLOW_OPTIONS.FIT_VIEW_PADDING, 
-          maxZoom: REACT_FLOW_OPTIONS.MAX_ZOOM,
-          includeHiddenNodes: true
-        }}
-        defaultEdgeOptions={{
-          type: 'bezier',
-          animated: true,
-          style: EDGE_STYLES.DEFAULT,
-        }}
-        minZoom={REACT_FLOW_OPTIONS.MIN_ZOOM}
-        maxZoom={REACT_FLOW_OPTIONS.MAX_ZOOM_LIMIT}
-      >
-        <Background 
-          color={REACT_FLOW_OPTIONS.BACKGROUND_COLOR} 
-          gap={REACT_FLOW_OPTIONS.BACKGROUND_GAP} 
-          size={REACT_FLOW_OPTIONS.BACKGROUND_SIZE} 
-        />
-        <AutoZoomHandler nodes={nodes} mindmapData={mindmapData} />
-      </ReactFlow>
+      <div ref={mindmapContainerRef} className="w-full h-full bg-background">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          fitView
+          fitViewOptions={{ 
+            padding: 0.05, 
+            maxZoom: 1.0,
+            includeHiddenNodes: true
+          }}
+          defaultEdgeOptions={{
+            type: 'bezier',
+            animated: true,
+            style: EDGE_STYLES.DEFAULT,
+          }}
+          minZoom={REACT_FLOW_OPTIONS.MIN_ZOOM}
+          maxZoom={REACT_FLOW_OPTIONS.MAX_ZOOM_LIMIT}
+        >
+          <Background 
+            color={theme === 'dark' ? REACT_FLOW_OPTIONS.BACKGROUND_COLOR_DARK : REACT_FLOW_OPTIONS.BACKGROUND_COLOR_LIGHT}
+            gap={REACT_FLOW_OPTIONS.BACKGROUND_GAP} 
+            size={REACT_FLOW_OPTIONS.BACKGROUND_SIZE}
+          />
+          <AutoZoomHandler nodes={nodes} mindmapData={mindmapData} />
+        </ReactFlow>
+      </div>
       
       <MindmapControls
         onZoomIn={handleZoomIn}
@@ -183,6 +184,7 @@ function ReactFlowInner({ mindmapData, nodes, edges, onNodesChange, onEdgesChang
 export function ReactFlowMindmapView({ mindmapData, className }: ReactFlowMindmapViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<MindmapNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const { theme } = useTheme();
 
   const { parsedTree } = useMindmapData(mindmapData);
   const { renderedNodeIds } = useNodeAnimation(parsedTree, mindmapData);
@@ -201,7 +203,8 @@ export function ReactFlowMindmapView({ mindmapData, className }: ReactFlowMindma
     const { nodes: visibleNodes, edges: visibleEdges } = generateVisibleNodesAndEdges(
       parsedTree,
       renderedNodeIds,
-      onToggle
+      onToggle,
+      theme === 'dark'
     );
 
    
@@ -213,7 +216,7 @@ export function ReactFlowMindmapView({ mindmapData, className }: ReactFlowMindma
           setNodes(laidOutNodes as MindmapNode[]);
           setEdges(visibleEdges as Edge[]);
         });
-      }, 50);
+      }, 25); // Reduced delay for faster layout rendering
       
       return () => clearTimeout(timeoutId);
     } else {

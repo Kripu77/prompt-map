@@ -73,6 +73,7 @@ export const conversations = pgTable("conversation", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   content: json("content"),
   reasoning: text("reasoning"), // Store AI reasoning/thinking process
+  reasoningDuration: integer("reasoning_duration"), // Duration of reasoning process in seconds
 });
 
 // For storing user onboarding state

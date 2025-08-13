@@ -45,6 +45,7 @@ export class ThreadsService {
           title: data.title,
           content: data.content,
           reasoning: data.reasoning || null,
+          reasoningDuration: data.reasoningDuration || null,
           createdAt: now,
           updatedAt: now,
         })
@@ -69,6 +70,7 @@ export class ThreadsService {
           ...(data.title && { title: data.title }),
           ...(data.content && { content: data.content }),
           ...(data.reasoning !== undefined && { reasoning: data.reasoning }),
+          ...(data.reasoningDuration !== undefined && { reasoningDuration: data.reasoningDuration }),
           updatedAt: new Date(),
         })
         .where(eq(conversations.id, id))
@@ -102,6 +104,7 @@ export class ThreadsService {
     title: string;
     content: unknown;
     reasoning?: string | null;
+    reasoningDuration?: number | null;
     userId: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -111,6 +114,7 @@ export class ThreadsService {
       title: dbThread.title,
       content: String(dbThread.content),
       reasoning: dbThread.reasoning || undefined,
+      reasoningDuration: dbThread.reasoningDuration || undefined,
       userId: dbThread.userId || '',
       createdAt: dbThread.createdAt.toISOString(),
       updatedAt: dbThread.updatedAt.toISOString(),

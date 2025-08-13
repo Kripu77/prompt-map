@@ -38,9 +38,10 @@ export function PromptInput({
   const [localMode, setLocalMode] = useState<MindmapMode>(mode);
   const [isHovered, setIsHovered] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Show toolbar when hovered, focused, or has content
-  const shouldShowToolbar = isHovered || isFocused || value.trim().length > 0;
+  // Show toolbar when hovered, focused, has content, or dropdown is open
+  const shouldShowToolbar = isHovered || isFocused || value.trim().length > 0 || isDropdownOpen;
 
   // Sync localMode when parent updates settings
   useEffect(() => {
@@ -97,9 +98,12 @@ export function PromptInput({
           delay: 0.1
         }}
         className={cn(
-          "relative rounded-2xl border border-input/40 bg-background/70",
-          "backdrop-blur-lg shadow-xl transform-none overflow-visible",
-          isFollowUpMode && "border-primary/40"
+          "relative rounded-lg border-2 border-border/50 bg-background/95",
+          "backdrop-blur-sm shadow-md transform-none overflow-visible",
+          "ring-1 ring-primary/10 hover:border-primary/40 transition-all duration-200",
+          "hover:bg-background hover:shadow-lg hover:ring-primary/20",
+          isFollowUpMode && "border-primary/60 bg-primary/10 ring-primary/30",
+          isFocused && "border-primary/70 bg-background ring-primary/40 shadow-lg"
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -112,7 +116,7 @@ export function PromptInput({
           </span>
         )}
 
-        <form onSubmit={handleSubmit} className="p-3">
+        <form onSubmit={handleSubmit} className="p-2">
           {/* Main input area */}
           <div className="flex items-end gap-3">
             <Textarea
@@ -125,8 +129,9 @@ export function PromptInput({
               disabled={loading || disabled}
               className={cn(
                 "min-h-[32px] max-h-32 focus-visible:ring-0 border-0 shadow-none resize-none",
-                "text-foreground placeholder:text-muted-foreground/60 text-base",
-                "bg-transparent flex-1 p-0"
+                "text-foreground placeholder:text-muted-foreground/70 text-sm font-medium",
+                "bg-transparent flex-1 p-0 leading-relaxed",
+                "placeholder:font-normal"
               )}
             />
             
@@ -135,7 +140,7 @@ export function PromptInput({
               disabled={!value.trim() || loading || disabled}
               size="icon"
               className={cn(
-                "h-8 w-8 rounded-lg shrink-0 mb-1",
+                "h-7 w-7 rounded-md shrink-0 mb-0.5",
                 "bg-primary hover:bg-primary/90 text-primary-foreground",
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
@@ -149,24 +154,24 @@ export function PromptInput({
             {shouldShowToolbar && (
               <motion.div 
                  initial={{ opacity: 0, height: 0, marginTop: 0, paddingTop: 0 }}
-                 animate={{ opacity: 1, height: "auto", marginTop: 12, paddingTop: 12 }}
+                 animate={{ opacity: 1, height: "auto", marginTop: 8, paddingTop: 8 }}
                  exit={{ opacity: 0, height: 0, marginTop: 0, paddingTop: 0 }}
                  transition={{ 
-                   duration: 0.3, 
-                   ease: [0.4, 0.0, 0.2, 1],
-                   opacity: { duration: 0.2 },
-                   height: { duration: 0.3 }
+                   duration: 0.25, 
+                   ease: [0.25, 0.46, 0.45, 0.94],
+                   opacity: { duration: 0.15 },
+                   height: { duration: 0.25 }
                  }}
                  className="flex items-center justify-between border-t border-border/30"
                >
                 <div className="flex items-center gap-2">
-                  <DropdownMenu>
+                  <DropdownMenu onOpenChange={setIsDropdownOpen}>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          "h-7 px-2 text-xs font-medium rounded-md transition-all duration-200",
+                          "h-6 px-2 text-xs font-medium rounded-md transition-all duration-150",
                           "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                         )}
                         disabled={loading || disabled}

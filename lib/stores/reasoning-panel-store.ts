@@ -4,13 +4,14 @@ import { persist } from 'zustand/middleware';
 interface ReasoningPanelState {
   isVisible: boolean;
   reasoningContent: string;
+  reasoningDuration?: number; // Duration of reasoning process in seconds
   isStreaming: boolean;
   currentTopic?: string;
   isAutoVisible: boolean; // New: tracks if panel is auto-shown during generation
   
   // Actions
   setVisible: (visible: boolean) => void;
-  setReasoningContent: (content: string) => void;
+  setReasoningContent: (content: string, duration?: number) => void;
   appendReasoningContent: (content: string) => void;
   setStreaming: (streaming: boolean) => void;
   setCurrentTopic: (topic?: string) => void;
@@ -26,13 +27,14 @@ export const useReasoningPanelStore = create<ReasoningPanelState>()(
     (set, get) => ({
       isVisible: false,
       reasoningContent: '',
+      reasoningDuration: undefined,
       isStreaming: false,
       currentTopic: undefined,
       isAutoVisible: false,
       
       setVisible: (visible) => set({ isVisible: visible }),
       
-      setReasoningContent: (content) => set({ reasoningContent: content }),
+      setReasoningContent: (content, duration) => set({ reasoningContent: content, reasoningDuration: duration }),
       
       appendReasoningContent: (content) => set((state) => ({ 
         reasoningContent: state.reasoningContent + content 
@@ -51,6 +53,7 @@ export const useReasoningPanelStore = create<ReasoningPanelState>()(
       
       clearReasoning: () => set({ 
         reasoningContent: '', 
+        reasoningDuration: undefined,
         isStreaming: false,
         currentTopic: undefined 
       }),

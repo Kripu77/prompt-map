@@ -36,7 +36,7 @@ export function StreamingMindmapView({
   return (
     <div className={cn("relative w-full h-full", className)}>
 
-      <div className="w-full h-full relative overflow-hidden">
+      <div className="w-full h-full relative overflow-hidden bg-background">
         {displayContent ? (
           <ReactFlowMindmapView mindmapData={displayContent} />
         ) : (

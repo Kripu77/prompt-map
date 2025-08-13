@@ -17,20 +17,20 @@ interface MarkdownRendererProps {
 
 export function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
   return (
-    <div className={cn("prose max-w-none", className)}>
+    <div className={cn("prose max-w-none break-words overflow-wrap-anywhere", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight, rehypeRaw]}
         components={{
           // Custom styling for different elements to fit mindmap nodes
           h1: ({ children }) => (
-            <h1 className="text-xl font-bold mb-1 text-foreground">{children}</h1>
+            <h1 className="text-3xl font-bold mb-2 text-foreground">{children}</h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-xl font-semibold mb-1 text-foreground">{children}</h2>
+            <h2 className="text-xl font-semibold mb-2 text-foreground">{children}</h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-sm font-semibold mb-1 text-foreground">{children}</h3>
+            <h3 className="text-lg font-semibold mb-1 text-foreground">{children}</h3>
           ),
           h4: ({ children }) => (
             <h4 className="text-base font-medium mb-1 text-foreground">{children}</h4>
@@ -42,16 +42,16 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
             <h6 className="text-base font-medium mb-1 text-foreground">{children}</h6>
           ),
           p: ({ children }) => (
-            <p className="text-2xl leading-tight mb-1 text-foreground">{children}</p>
+            <p className="text-3xl leading-relaxed mb-2 text-foreground break-words">{children}</p>
           ),
           ul: ({ children }) => (
-            <ul className="text-xs list-disc list-inside mb-1 space-y-0.5 text-foreground">{children}</ul>
+            <ul className="text-sm list-disc list-inside mb-2 space-y-1 text-foreground">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="text-sm list-decimal list-inside mb-1 space-y-0.5 text-foreground">{children}</ol>
+            <ol className="text-sm list-decimal list-inside mb-2 space-y-1 text-foreground">{children}</ol>
           ),
           li: ({ children }) => (
-            <li className="text-sm text-foreground">{children}</li>
+            <li className="text-sm text-foreground leading-relaxed">{children}</li>
           ),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           code: ({ className, children, ...props }: any) => {

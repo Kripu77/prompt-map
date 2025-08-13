@@ -3,40 +3,44 @@ import { NodeDimensions } from '../../components/features/mindmap/types';
 
 // Helper function to estimate text width based on content type and node type
 function estimateTextWidth(text: string, nodeType: 'root' | 'branch' | 'leaf'): number {
-  // Base character width multipliers for different node types (accounting for font sizes)
-  const baseMultipliers = {
-    root: 12,    // text-lg font size
-    branch: 8,   // text-sm font size  
-    leaf: 7      // text-xs font size
-  };
+  // Get width multiplier from constants for consistency
+  const config = NODE_DIMENSIONS[nodeType.toUpperCase() as keyof typeof NODE_DIMENSIONS];
+  const baseMultiplier = config.WIDTH_MULTIPLIER;
   
-  let totalWidth = 0;
-  const lines = text.split('\n');
+  let maxLineWidth = 0;
+  const lines = text.split('\n').filter(line => line.trim() !== '');
+  
+  // If no content, return a base width
+  if (lines.length === 0) {
+    return config.MIN_WIDTH * 0.8;
+  }
   
   for (const line of lines) {
+    const trimmedLine = line.trim();
     let lineWidth = 0;
     
     // Check for markdown headers and adjust multiplier
-    if (line.startsWith('# ')) {
-      lineWidth = (line.length - 2) * (baseMultipliers[nodeType] * 1.4); // h1 is larger
-    } else if (line.startsWith('## ')) {
-      lineWidth = (line.length - 3) * (baseMultipliers[nodeType] * 1.3); // h2
-    } else if (line.startsWith('### ')) {
-      lineWidth = (line.length - 4) * (baseMultipliers[nodeType] * 1.2); // h3
-    } else if (line.startsWith('**') && line.endsWith('**')) {
-      lineWidth = (line.length - 4) * (baseMultipliers[nodeType] * 1.1); // bold text
-    } else if (line.includes('`')) {
+    if (trimmedLine.startsWith('# ')) {
+      lineWidth = (trimmedLine.length - 2) * (baseMultiplier * 1.5); // h1 is larger
+    } else if (trimmedLine.startsWith('## ')) {
+      lineWidth = (trimmedLine.length - 3) * (baseMultiplier * 1.4); // h2
+    } else if (trimmedLine.startsWith('### ')) {
+      lineWidth = (trimmedLine.length - 4) * (baseMultiplier * 1.3); // h3
+    } else if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
+      lineWidth = (trimmedLine.length - 4) * (baseMultiplier * 1.2); // bold text
+    } else if (trimmedLine.includes('`')) {
       // Code blocks or inline code - typically wider
-      lineWidth = line.length * (baseMultipliers[nodeType] * 1.15);
+      lineWidth = trimmedLine.length * (baseMultiplier * 1.25);
     } else {
-      // Regular text
-      lineWidth = line.length * baseMultipliers[nodeType];
+      // Regular text - use full multiplier for better sizing
+      lineWidth = trimmedLine.length * baseMultiplier;
     }
     
-    totalWidth = Math.max(totalWidth, lineWidth);
+    maxLineWidth = Math.max(maxLineWidth, lineWidth);
   }
   
-  return totalWidth;
+  // Add some base width for very short content
+  return Math.max(maxLineWidth, config.MIN_WIDTH * 0.6);
 }
 
 // Helper function to estimate text height based on content
@@ -79,19 +83,22 @@ export function calculateNodeDimensions(
 ): NodeDimensions {
   const config = NODE_DIMENSIONS[nodeType.toUpperCase() as keyof typeof NODE_DIMENSIONS];
   
-  // Use improved text estimation
+  // Calculate dynamic width based on content
   const estimatedWidth = estimateTextWidth(content, nodeType);
-  const estimatedHeight = estimateTextHeight(content, nodeType);
   
-  // Apply bounds with the estimated dimensions
+  // Apply width bounds to prevent excessive growth or shrinkage
   const width = Math.max(
     config.MIN_WIDTH,
     Math.min(config.MAX_WIDTH, estimatedWidth + config.PADDING)
   );
   
+  // Calculate dynamic height based on content
+  const estimatedHeight = estimateTextHeight(content, nodeType);
+  
+  // Apply height bounds to prevent excessive growth or shrinkage
   const height = Math.max(
     config.MIN_HEIGHT,
-    estimatedHeight + config.LINE_PADDING
+    Math.min(config.MAX_HEIGHT, estimatedHeight + config.LINE_PADDING)
   );
   
   return { width, height };

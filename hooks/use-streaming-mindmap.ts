@@ -62,6 +62,10 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
 
   // Ref to track the current abort controller
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Ref to track reasoning timing
+  const reasoningStartTimeRef = useRef<number | null>(null);
+  const reasoningEndTimeRef = useRef<number | null>(null);
 
   // Update progress as content streams
   useEffect(() => {
@@ -92,7 +96,7 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
     });
   }, [isAuthenticated, status, router]);
 
-  const handleCompletionTasks = useCallback(async (completedContent: string, currentPrompt: string, reasoningData?: string) => {
+  const handleCompletionTasks = useCallback(async (completedContent: string, currentPrompt: string, reasoningData?: string, reasoningDuration?: number) => {
     try {
       console.log('handleCompletionTasks called with:', {
         contentLength: completedContent?.length || 0,
@@ -115,9 +119,10 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
           console.log('Creating thread with reasoning data:', {
             title,
             contentLength: completedContent.length,
-            reasoningLength: reasoningData?.length || 0
+            reasoningLength: reasoningData?.length || 0,
+            reasoningDuration
           });
-          await createThread(title, completedContent, reasoningData);
+          await createThread(title, completedContent, reasoningData, reasoningDuration);
           toast.success('Mindmap saved successfully!');
         } catch (error) {
           console.error('Error auto-saving mindmap:', error);
@@ -145,6 +150,10 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       setReasoning(''); // Clear previous reasoning content
       setIsComplete(false);
       setProgress({ wordCount: 0, estimatedProgress: 0 });
+      
+      // Reset reasoning timing references
+      reasoningStartTimeRef.current = null;
+      reasoningEndTimeRef.current = null;
       
       // Initialize reasoning panel
       clearReasoning();
@@ -197,6 +206,11 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
           // Handle AI SDK UI message stream format for reasoning content
           const lines = chunk.split('\n');
           for (const line of lines) {
+            // Skip metadata lines that shouldn't be included in content
+            if (line.startsWith('f:') || line.startsWith('e:') || line.startsWith('d:')) {
+              continue;
+            }
+            
             if (line.startsWith('data: ')) {
               const dataStr = line.slice(6); // Remove 'data: ' prefix
               if (dataStr.trim() === '[DONE]') {
@@ -229,11 +243,13 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
                 // Handle reasoning start
                 if (data.type === 'reasoning-start') {
                   console.log('Reasoning started with ID:', data.id);
+                  reasoningStartTimeRef.current = Date.now();
                 }
                 
                 // Handle reasoning end
                 if (data.type === 'reasoning-end') {
                   console.log('Reasoning ended for ID:', data.id);
+                  reasoningEndTimeRef.current = Date.now();
                 }
                 
               } catch (e) {
@@ -283,8 +299,15 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
                   appendReasoningContent(reasoningData);
                 }
               }
-            } else if (line.trim() && !line.startsWith('0:') && !line.startsWith('g:') && !line.startsWith('data:')) {
+            } else if (line.trim() && 
+                      !line.startsWith('0:') && 
+                      !line.startsWith('g:') && 
+                      !line.startsWith('data:') &&
+                      !line.startsWith('f:') &&
+                      !line.startsWith('e:') &&
+                      !line.startsWith('d:')) {
               // Fallback for plain text streams (non-reasoning models)
+              // Filter out AI SDK metadata lines
               accumulatedContent += line + '\n';
               setCompletion(accumulatedContent);
               
@@ -303,8 +326,14 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
       setStreaming(false); // Stop streaming in reasoning panel
       setMindmapData(accumulatedContent);
       
+      // Calculate reasoning duration
+      let reasoningDuration: number | undefined;
+      if (reasoningStartTimeRef.current && reasoningEndTimeRef.current) {
+        reasoningDuration = Math.round((reasoningEndTimeRef.current - reasoningStartTimeRef.current) / 1000);
+      }
+      
       // Use the accumulated reasoning content
-      await handleCompletionTasks(accumulatedContent, prompt, accumulatedReasoning);
+      await handleCompletionTasks(accumulatedContent, prompt, accumulatedReasoning, reasoningDuration);
 
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -330,6 +359,9 @@ export function useStreamingMindmap(): UseStreamingMindmapReturn {
         setStreaming(false);
         hideAfterGeneration(); // Explicitly hide after generation
         abortControllerRef.current = null;
+        // Reset reasoning timing
+        reasoningStartTimeRef.current = null;
+        reasoningEndTimeRef.current = null;
       }
   }, [setMindmapData, handleCompletionTasks, clearReasoning, setCurrentTopic, setStreaming, appendReasoningContent]);
 

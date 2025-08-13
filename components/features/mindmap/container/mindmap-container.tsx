@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useStreamingMindmap } from '@/hooks/use-streaming-mindmap';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
 import { useSidePanelStore } from '@/lib/stores/side-panel-store';
+import { useSidebarStore } from '@/lib/stores/sidebar-store';
 import { StreamingMindmapView } from '../views/streaming-mindmap-view';
 import { PromptInput } from '../controls/prompt-input';
 import { ReactFlowMindmapView } from '../views/react-flow/ReactFlowMindmapView';
@@ -13,16 +14,19 @@ import { Sparkles, CornerDownLeft, AlertCircle, Zap, Clock, Brain } from 'lucide
 import { generateTitleFromPrompt } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useUserSettings } from '@/hooks/use-user-settings';
+import { useReasoningPanelStore } from '@/lib/stores/reasoning-panel-store';
 import type { MindmapMode } from '@/lib/api/llm/prompts/mindmap-prompts';
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ai-elements/reasoning';
+
 
 export function MindmapContainer() {
   const { mindmapData, isLoading: storeLoading } = useMindmapStore();
   const { settings, setMindmapMode } = useUserSettings();
   const { isOpen: isSidePanelOpen } = useSidePanelStore();
+  const { setIsOpen: setSidebarOpen } = useSidebarStore();
   const {
     streamingContent,
-    reasoningContent,
+    reasoningContent: streamingReasoningContent,
     isStreaming,
     isComplete,
     error,
@@ -32,6 +36,13 @@ export function MindmapContainer() {
     stopGeneration,
     resetStream,
   } = useStreamingMindmap();
+  const { reasoningContent: savedReasoningContent, reasoningDuration } = useReasoningPanelStore();
+  
+  // Combine reasoning content from streaming and saved sources
+  const reasoningContent = streamingReasoningContent || savedReasoningContent;
+  
+  // Debug log for reasoning duration
+  console.log('MindmapContainer reasoningDuration:', reasoningDuration);
   
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
@@ -48,6 +59,9 @@ export function MindmapContainer() {
   const handlePromptSubmit = async (value: string) => {
     try {
       resetStream();
+      
+      // Auto-close sidebar when content starts streaming
+      setSidebarOpen(false);
       
       if (!isFollowUpMode || promptHistory.length === 0) {
         setPromptHistory([value]);
@@ -92,6 +106,9 @@ export function MindmapContainer() {
       setPromptHistory([pendingPrompt]);
       resetStream();
       
+      // Auto-close sidebar when content starts streaming
+      setSidebarOpen(false);
+      
       generateMindmap(pendingPrompt, {
         useChainOfThought: true,
         format: 'practical',
@@ -105,6 +122,9 @@ export function MindmapContainer() {
     if (pendingPrompt) {
       setTopicShiftDetected(false);
       setPromptHistory(prev => [...prev, pendingPrompt]);
+      
+      // Auto-close sidebar when content starts streaming
+      setSidebarOpen(false);
       
       generateFollowUp(pendingPrompt, {
         originalPrompt: promptHistory[0],
@@ -134,8 +154,8 @@ export function MindmapContainer() {
 
   return (
     <div className="bg-background w-full h-full relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background/20 pointer-events-none z-0" />
-      <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,rgba(120,120,120,0.1)_1px,transparent_1px)] bg-[length:24px_24px] pointer-events-none" />
+      {/* Subtle background pattern using shadcn/ui colors */}
+      <div className="absolute inset-0 bg-gradient-to-br from-muted/30 via-background to-muted/20 pointer-events-none z-0" />
       
       <motion.div 
         className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 w-full px-3 sm:px-0"
@@ -262,6 +282,7 @@ export function MindmapContainer() {
                     className="w-full bg-card/30 backdrop-blur-sm border border-border/30 rounded-lg p-" 
                     isStreaming={isStreaming && !isComplete}
                     defaultOpen={true}
+                    duration={reasoningDuration}
                   >
                     <ReasoningTrigger className="text-muted-foreground/80 font-light" />
                     <ReasoningContent className="mt-3 h-32 overflow-y-auto text-sm font-light text-muted-foreground/90 leading-relaxed scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
@@ -270,7 +291,7 @@ export function MindmapContainer() {
                   </Reasoning>
                 </motion.div>
 
-                {/* Simple Progress indicator - only show when there's actual progress */}
+                {/*  Progress indicator - only show when there's actual progress */}
                 {isStreaming && progress.wordCount > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -278,10 +299,6 @@ export function MindmapContainer() {
                     transition={{ delay: 0.5 }}
                     className="flex items-center gap-4 mt-8 text-sm text-muted-foreground"
                   >
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>{progress.wordCount} words</span>
-                    </div>
                     <div className="w-px h-4 bg-border" />
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -388,6 +405,8 @@ export function MindmapContainer() {
           </motion.div>
         )}
       </AnimatePresence>
+      
+
     </div>
   );
 }

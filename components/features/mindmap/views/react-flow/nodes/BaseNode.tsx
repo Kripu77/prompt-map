@@ -34,28 +34,29 @@ export function BaseNode({
   const [actualDimensions, setActualDimensions] = useState<{width: number, height: number} | null>(null);
   const { width: calculatedWidth, height: calculatedHeight } = calculateNodeDimensions(data.content, nodeType);
   
-// Disggusting hack for now TODO KK: Comeback and fix
+// Calculate dimensions with fixed width and dynamic height
   useLayoutEffect(() => {
     if (contentRef.current) {
       const contentElement = contentRef.current;
       
-
+      // Create a temporary div with the same fixed width to measure wrapped text height
       const tempDiv = document.createElement('div');
       tempDiv.style.position = 'absolute';
       tempDiv.style.visibility = 'hidden';
-      tempDiv.style.whiteSpace = 'nowrap';
-      tempDiv.style.maxWidth = 'none';
+      tempDiv.style.width = `${calculatedWidth - 10}px`; // Account for padding
+      tempDiv.style.whiteSpace = 'normal'; // Allow text wrapping
+      tempDiv.style.wordWrap = 'break-word';
+      tempDiv.style.overflowWrap = 'break-word';
       tempDiv.innerHTML = contentElement.innerHTML;
       document.body.appendChild(tempDiv);
       
-      const actualWidth = tempDiv.scrollWidth;
       const actualHeight = tempDiv.scrollHeight;
       
       document.body.removeChild(tempDiv);
       
-      // Add padding and ensure minimum dimensions
-      const finalWidth = Math.max(calculatedWidth, actualWidth + 60);
-      const finalHeight = Math.max(calculatedHeight, actualHeight + 40);
+      // Use fixed width and calculate height based on wrapped content
+      const finalWidth = calculatedWidth; // Use the fixed width from constants
+      const finalHeight = Math.max(calculatedHeight, actualHeight + 60); // Add padding for height
       
       setActualDimensions({ width: finalWidth, height: finalHeight });
     }
@@ -66,6 +67,11 @@ export function BaseNode({
   
   const handleStyle = {
     transform: 'translateY(-50%)',
+    background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+    border: '2px solid white',
+    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+    width: '12px',
+    height: '12px',
   };
 
   if (nodeType === 'root') {
@@ -88,8 +94,8 @@ export function BaseNode({
         )}
         
         <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className="text-center w-full h-full flex items-center justify-center">
-            <div ref={contentRef} className="w-full h-full flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center">
+            <div ref={contentRef} className="w-full h-full flex items-center justify-center text-center break-words overflow-hidden">
               <MarkdownRenderer 
                 content={data.content} 
                 className={contentClassName}
@@ -118,7 +124,7 @@ export function BaseNode({
         <Handle 
           type="target" 
           position={Position.Left} 
-          style={{ left: -8, top: '50%', ...handleStyle }} 
+          style={{ left: -6, top: '50%', ...handleStyle }} 
         />
       )}
       
@@ -126,13 +132,13 @@ export function BaseNode({
         <Handle 
           type="source" 
           position={Position.Right} 
-          style={{ right: -8, top: '50%', ...handleStyle }} 
+          style={{ right: -6, top: '50%', ...handleStyle }} 
         />
       )}
       
       <div className="absolute inset-0 flex items-center justify-center p-3">
-        <div className="text-center w-full h-full flex items-center justify-center">
-          <div ref={contentRef} className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full flex items-center justify-center">
+          <div ref={contentRef} className="w-full h-full flex items-center justify-center text-center break-words overflow-hidden">
             <MarkdownRenderer 
               content={data.content} 
               className={contentClassName}

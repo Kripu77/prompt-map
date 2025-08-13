@@ -52,6 +52,7 @@ export interface Thread {
   updatedAt: string;
   content: string;
   reasoning?: string;
+  reasoningDuration?: number; // Duration of reasoning process in seconds
   userId: string;
   metadata?: {
     nodeCount?: number;
@@ -64,6 +65,7 @@ export interface ThreadCreateRequest {
   title: string;
   content: string;
   reasoning?: string;
+  reasoningDuration?: number; // Duration of reasoning process in seconds
   metadata?: Thread['metadata'];
 }
 
@@ -71,6 +73,7 @@ export interface ThreadUpdateRequest {
   title?: string;
   content?: string;
   reasoning?: string;
+  reasoningDuration?: number; // Duration of reasoning process in seconds
   metadata?: Partial<Thread['metadata']>;
 }
 

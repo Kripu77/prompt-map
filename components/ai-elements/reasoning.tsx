@@ -60,24 +60,27 @@ export const Reasoning = memo(
 
     const [startTime, setStartTime] = useState<number | null>(null);
 
-    // Track duration when streaming starts and ends
+    
     useEffect(() => {
-      if (isStreaming) {
-        if (startTime === null) {
-          setStartTime(Date.now());
+      if (durationProp === undefined) {
+        if (isStreaming) {
+          if (startTime === null) {
+            setStartTime(Date.now());
+          }
+        } else if (startTime !== null) {
+          setDuration(Math.round((Date.now() - startTime) / 1000));
+          setStartTime(null);
         }
-      } else if (startTime !== null) {
-        setDuration(Math.round((Date.now() - startTime) / 1000));
-        setStartTime(null);
       }
-    }, [isStreaming, startTime, setDuration]);
+    }, [isStreaming, startTime, setDuration, durationProp]);
 
-    // Auto-open when streaming starts, but don't auto-close when streaming ends
     useEffect(() => {
       if (isStreaming && !isOpen && defaultOpen) {
         setIsOpen(true);
+      } else if (!isStreaming && isOpen && duration > 0) {
+        setIsOpen(false);
       }
-    }, [isStreaming, isOpen, defaultOpen, setIsOpen]);
+    }, [isStreaming, isOpen, defaultOpen, duration, setIsOpen]);
 
     const handleOpenChange = (open: boolean) => {
       setIsOpen(open);
@@ -125,10 +128,10 @@ export const ReasoningTrigger = memo(
         {children ?? (
           <>
             <BrainIcon className="size-4" />
-            {isStreaming || duration === 0 ? (
+            {isStreaming ? (
               <p>Thinking...</p>
             ) : (
-              <p>Thought for {duration} seconds</p>
+              <p>{duration > 0 ? `Thought for ${duration} seconds` : 'Thought process'}</p>
             )}
             <ChevronDownIcon
               className={cn(

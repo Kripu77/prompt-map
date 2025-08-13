@@ -28,6 +28,7 @@ export const ThreadCreateSchema = z.object({
   title: z.string().min(1, 'Title cannot be empty').max(200, 'Title too long'),
   content: z.string().min(1, 'Content cannot be empty'),
   reasoning: z.string().optional(),
+  reasoningDuration: z.number().int().min(0).optional(), // Duration in seconds
   metadata: z.object({
     nodeCount: z.number().optional(),
     lastAccessed: z.string().optional(),
@@ -39,6 +40,7 @@ export const ThreadUpdateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   content: z.string().min(1).optional(),
   reasoning: z.string().optional(),
+  reasoningDuration: z.number().int().min(0).optional(), // Duration in seconds
   metadata: z.object({
     nodeCount: z.number().optional(),
     lastAccessed: z.string().optional(),

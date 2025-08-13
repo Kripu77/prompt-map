@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       },
+      sendReasoning: true,
     });
 
   } catch (error) {

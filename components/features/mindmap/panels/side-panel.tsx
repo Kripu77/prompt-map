@@ -3,7 +3,12 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useSidePanelStore } from '@/lib/stores/side-panel-store';
 import { useMindmapEditor } from '@/hooks/use-mindmap-editor';
+import { useStreamingMindmap } from '@/hooks/use-streaming-mindmap';
+import { useMindmapStore } from '@/lib/stores/mindmap-store';
+import { useUserSettings } from '@/hooks/use-user-settings';
+import { useReasoningPanelStore } from '@/lib/stores/reasoning-panel-store';
 import { RichTextEditor } from '../editors/rich-text-editor';
+import { PromptInput } from '../controls/prompt-input';
 import {
   Sheet,
   SheetContent,
@@ -12,15 +17,49 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { X, FileText, Save } from 'lucide-react';
+import { X, FileText, Save, Brain } from 'lucide-react';
+import { generateTitleFromPrompt } from '@/lib/utils';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ai-elements/reasoning';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import type { MindmapMode } from '@/lib/api/llm/prompts/mindmap-prompts';
 
 
 
 export function SidePanel() {
   const { isOpen, setIsOpen, width, setWidth } = useSidePanelStore();
   const { saveChanges, isSaving, canSave } = useMindmapEditor();
+  const { mindmapData, isLoading: storeLoading } = useMindmapStore();
+  const { settings, setMindmapMode } = useUserSettings();
+  const {
+    streamingContent,
+    reasoningContent: streamingReasoningContent,
+    isStreaming,
+    isComplete,
+    error,
+    progress,
+    generateMindmap,
+    generateFollowUp,
+    stopGeneration,
+    resetStream,
+  } = useStreamingMindmap();
+  const { reasoningContent: savedReasoningContent, reasoningDuration: savedReasoningDuration } = useReasoningPanelStore();
+  
+  // Combine reasoning content from streaming and saved sources
+  const reasoningContent = streamingReasoningContent || savedReasoningContent;
+  const reasoningDuration = savedReasoningDuration; // Use saved duration for past threads
+  
   const [isResizing, setIsResizing] = useState(false);
+  const [isFollowUpMode, setIsFollowUpMode] = useState(false);
+  const [promptHistory, setPromptHistory] = useState<string[]>([]);
+  const [topicShiftDetected, setTopicShiftDetected] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
+
+  const displayContent = streamingContent || mindmapData;
+  const isGenerating = isStreaming || storeLoading;
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -29,6 +68,50 @@ export function SidePanel() {
   const handleSave = useCallback(async () => {
     await saveChanges();
   }, [saveChanges]);
+
+  const handlePromptSubmit = async (value: string) => {
+    try {
+      resetStream();
+      
+      if (!isFollowUpMode || promptHistory.length === 0) {
+        setPromptHistory([value]);
+        setIsFollowUpMode(false);
+        
+        generateMindmap(value, {
+          useChainOfThought: true,
+          format: 'practical',
+        });
+      } else {
+        const shouldCheckTopicShift = await checkTopicShift();
+        
+        if (shouldCheckTopicShift) {
+          setPendingPrompt(value);
+          setTopicShiftDetected(true);
+          return;
+        }
+        
+        setPromptHistory(prev => [...prev, value]);
+        generateFollowUp(value, {
+          originalPrompt: promptHistory[0],
+          existingMindmap: displayContent,
+          previousPrompts: promptHistory,
+          isFollowUp: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error processing prompt:', error);
+      toast.error('Failed to process prompt. Please try again.');
+    }
+  };
+
+  const checkTopicShift = async (): Promise<boolean> => {
+    if (!displayContent || promptHistory.length === 0) return false;
+    return false;
+  };
+
+  const handleModeChange = (mode: MindmapMode) => {
+    setMindmapMode(mode);
+  };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsResizing(true);
@@ -91,7 +174,7 @@ export function SidePanel() {
             <div className="flex items-center gap-3">
               <FileText className="h-5 w-5" />
               <SheetTitle className="text-lg font-semibold">
-                Notes
+                Mindmap Editor
               </SheetTitle>
             </div>
             
@@ -124,8 +207,62 @@ export function SidePanel() {
           </SheetDescription>
         </SheetHeader>
         
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <RichTextEditor className="flex-1 h-full" />
+        <div className="flex-1 overflow-hidden flex flex-col relative">
+          {/* Lexical Editor Section */}
+          <div className="flex-1 overflow-hidden min-h-0">
+            <RichTextEditor className="h-full" streamingContent={streamingContent} isStreaming={isStreaming} />
+          </div>
+          
+          {/* Enhanced Prompt Input Section */}
+          <div className="bg-background/60 backdrop-blur-sm border-t border-border/20">
+            <div className="px-6 py-4">
+              {/* AI Reasoning Section - shown in place of Prompt Map label */}
+              <AnimatePresence>
+                {reasoningContent ? (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="mb-3"
+                  >
+            
+                    <Reasoning 
+                      className="w-full bg-background/50 border border-border/30 rounded-md" 
+                      isStreaming={isStreaming}
+                      defaultOpen={isStreaming && !streamingContent}
+                      duration={reasoningDuration}
+                    >
+                      <ReasoningTrigger className="text-muted-foreground/80 font-light text-xs" />
+                      <ReasoningContent className="mt-2 max-h-24 overflow-y-auto text-xs font-light text-muted-foreground/90 leading-relaxed scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
+                        {reasoningContent}
+                      </ReasoningContent>
+                    </Reasoning>
+                  </motion.div>
+                ) : (
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-foreground/80">Prompt Map</span>
+                  </div>
+                )}
+              </AnimatePresence>
+
+              <PromptInput
+                onSubmit={handlePromptSubmit}
+                loading={isGenerating || topicShiftDetected}
+                error={error}
+                isFollowUpMode={isFollowUpMode}
+                mode={settings?.mindmapMode || 'comprehensive'}
+                onModeChange={handleModeChange}
+                placeholder={
+                  isFollowUpMode 
+                    ? "Type anything, watch it branch out 🌿" 
+                    : "Enter a topic to generate a mindmap..."
+                }
+                disabled={topicShiftDetected}
+              />
+            </div>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
