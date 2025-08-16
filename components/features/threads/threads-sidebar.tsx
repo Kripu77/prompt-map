@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useThreads } from "@/hooks/use-threads";
 import type { Thread } from "@/types/api";
 import { useSession } from "next-auth/react";
@@ -66,14 +66,21 @@ const emptyGroupedThreads: GroupedThreads = {
 
 export function ThreadsSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [groupedThreads, setGroupedThreads] = useState<GroupedThreads>(emptyGroupedThreads);
-  const [displayLimit, setDisplayLimit] = useState<number>(12);
-  const [hasMoreThreads, setHasMoreThreads] = useState<boolean>(false);
-  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const loaderRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const hasFetchedRef = useRef<boolean>(false);
-  const { threads, isLoading, selectedThread, loadThread, deleteThread, fetchThreads } = useThreads();
+  const { 
+    threads, 
+    isLoading, 
+    isLoadingMore, 
+    hasMore, 
+    selectedThread, 
+    loadThread, 
+    deleteThread, 
+    fetchThreads, 
+    loadMoreThreads 
+  } = useThreads(debouncedSearchQuery);
   const { isOpen, setIsOpen } = useSidebarStore();
   const { mindmapData, setMindmapData, setPrompt, setIsLoading, setError } = useMindmapStore();
   const { setReasoningContent, showForSavedThread } = useReasoningPanelStore();
@@ -90,6 +97,15 @@ export function ThreadsSidebar() {
     };
   }, [setIsOpen]);
 
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     if (isAuthenticated && isOpen && !isLoading) {
@@ -141,45 +157,22 @@ export function ThreadsSidebar() {
   }, [setIsOpen]);
 
 
+  // Setup intersection observer for infinite scrolling
   useEffect(() => {
-    if (typeof window !== 'undefined' && isOpen) {
-      const availableHeight = window.innerHeight - 150;
-      const estimatedItemsPerScreen = Math.max(6, Math.floor(availableHeight / 60));
-      
-
-      setDisplayLimit(estimatedItemsPerScreen + 4);
-    }
-  }, [isOpen]);
-
-  // Function to increase the display limit when user scrolls down
-  const loadMoreThreads = useCallback(() => {
-    if (!hasMoreThreads || isLoadingMore) return;
+    if (!loaderRef.current || !isOpen || !hasMore) return;
     
-    setIsLoadingMore(true);
-    // Simulate loading delay to prevent rapid increases
-    setTimeout(() => {
-      setDisplayLimit(prevLimit => prevLimit + 8);
-      setIsLoadingMore(false);
-    }, 300);
-  }, [hasMoreThreads, isLoadingMore]);
-
-  // Setup intersection observer for infinite scrolling with improved detection
-  useEffect(() => {
-    if (!loaderRef.current || !isOpen) return;
-    
-    // Store ref value in a variable to prevent issues in cleanup function
     const loaderElement = loaderRef.current;
     
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMoreThreads) {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
           console.log("Loading more threads - intersection detected");
           loadMoreThreads();
         }
       },
       { 
-        threshold: 0.1, // Lower threshold to detect earlier
-        rootMargin: "100px" // Start loading when within 100px
+        threshold: 0.1,
+        rootMargin: "100px"
       }
     );
 
@@ -190,14 +183,12 @@ export function ThreadsSidebar() {
         observer.unobserve(loaderElement);
       }
     };
-  }, [hasMoreThreads, isOpen, loadMoreThreads]);
+  }, [hasMore, isOpen, loadMoreThreads, isLoadingMore]);
 
-  // Group threads by date and respect display limit
-  useEffect(() => {
+  // Group threads by date (server-side pagination handles filtering)
+  const groupedThreads = useMemo(() => {
     if (!threads.length) {
-      setGroupedThreads(emptyGroupedThreads);
-      setHasMoreThreads(false);
-      return;
+      return emptyGroupedThreads;
     }
 
     const grouped: GroupedThreads = {
@@ -208,59 +199,29 @@ export function ThreadsSidebar() {
       older: [],
     };
 
-    // Filter and sort threads
-    const filteredThreads = searchQuery 
-      ? threads.filter(thread => 
-          thread.title.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : threads;
-
-    // Calculate total threads to display with limit
-    let threadCount = 0;
-    let totalDisplayed = 0;
-
-    // Group threads by date
-    filteredThreads.forEach(thread => {
-      threadCount++;
-      
-      // Skip if we've already reached the display limit
-      if (totalDisplayed >= displayLimit && !searchQuery) {
-        return;
-      }
-      
+    // Group all threads by date (no client-side filtering needed)
+    threads.forEach(thread => {
       const date = new Date(thread.updatedAt);
       const now = new Date();
       
       if (isToday(date)) {
         grouped.today.push(thread);
-        totalDisplayed++;
       } else if (isYesterday(date)) {
         grouped.yesterday.push(thread);
-        totalDisplayed++;
       } else {
         const dayDiff = differenceInDays(now, date);
         if (dayDiff <= 7) {
           grouped.previous7Days.push(thread);
-          totalDisplayed++;
         } else if (dayDiff <= 30) {
           grouped.previous30Days.push(thread);
-          totalDisplayed++;
         } else {
           grouped.older.push(thread);
-          totalDisplayed++;
         }
       }
     });
 
-    // Check if there are more threads to load
-    setHasMoreThreads(threadCount > totalDisplayed && !searchQuery);
-    setGroupedThreads(grouped);
-  }, [threads, searchQuery, displayLimit]);
-
-  // Reset display limit when search query changes or sidebar closes/opens
-  useEffect(() => {
-    setDisplayLimit(12);
-  }, [searchQuery, isOpen]);
+    return grouped;
+  }, [threads]);
 
   // Don't render anything for unauthenticated users or on the sign-in page
   if (!isAuthenticated || pathname.includes("/signin")) {
@@ -451,7 +412,7 @@ export function ThreadsSidebar() {
                   {renderDateGroup("Previous 30 Days", groupedThreads.previous30Days)}
                   {renderDateGroup("Older", groupedThreads.older)}
                   
-                  {hasMoreThreads && (
+                  {hasMore && (
                     <div 
                       ref={loaderRef} 
                       className="py-4 flex justify-center"
@@ -480,7 +441,7 @@ export function ThreadsSidebar() {
             </div>
           </ScrollArea>
           
-          {hasMoreThreads && !isLoadingMore && (
+          {hasMore && !isLoadingMore && (
             <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none bg-gradient-to-t from-background to-transparent"></div>
           )}
         </div>
