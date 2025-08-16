@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { 
   useQuery, 
+  useInfiniteQuery,
   useMutation, 
   useQueryClient
 } from '@tanstack/react-query';
@@ -13,20 +14,28 @@ import {
   updateThreadAPI,
   deleteThreadAPI
 } from '@/lib/api/mindmap';
-import type { Thread, ThreadUpdateRequest } from '@/types/api';
+import type { Thread, ThreadUpdateRequest, PaginationParams, ThreadsResponse } from '@/types/api';
+import type { InfiniteData } from '@tanstack/react-query';
 
-export function useThreads() {
+export function useThreads(searchQuery?: string) {
   const { data: session, status } = useSession();
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const queryClient = useQueryClient();
   const isAuthenticated = status === 'authenticated';
   
-  // Query for fetching all threads
-  const threadsQuery = useQuery({
-    queryKey: ['threads'],
-    queryFn: fetchThreadsAPI,
+  // Infinite query for fetching threads with pagination
+  const threadsQuery = useInfiniteQuery({
+    queryKey: ['threads', searchQuery],
+    queryFn: ({ pageParam = 0 }) => fetchThreadsAPI({ 
+      limit: 20, 
+      offset: pageParam, 
+      search: searchQuery 
+    }),
     enabled: isAuthenticated,
-    select: (data) => data.threads,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      return lastPage.hasMore ? lastPage.offset + lastPage.limit : undefined;
+    },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
   
@@ -35,6 +44,20 @@ export function useThreads() {
     mutationFn: createThreadAPI,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['threads'] });
+      // Optionally add the new thread to the first page of the infinite query
+       queryClient.setQueryData<InfiniteData<ThreadsResponse>>(['threads', searchQuery], (oldData) => {
+         if (oldData) {
+           const newPages = [...oldData.pages];
+           if (newPages[0]) {
+             newPages[0] = {
+               ...newPages[0],
+               threads: [data.thread, ...newPages[0].threads]
+             };
+           }
+           return { ...oldData, pages: newPages };
+         }
+         return oldData;
+       });
       toast.success("Mindmap saved successfully", { duration: 1000 });
     },
     onError: (error) => {
@@ -48,6 +71,19 @@ export function useThreads() {
     mutationFn: updateThreadAPI,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['threads'] });
+      // Update the thread in the infinite query cache
+       queryClient.setQueryData<InfiniteData<ThreadsResponse>>(['threads', searchQuery], (oldData) => {
+         if (oldData) {
+           const newPages = oldData.pages.map((page: ThreadsResponse) => ({
+             ...page,
+             threads: page.threads.map((thread: Thread) => 
+               thread.id === data.thread.id ? data.thread : thread
+             )
+           }));
+           return { ...oldData, pages: newPages };
+         }
+         return oldData;
+       });
       
       // Update the selected thread if it's the one being edited
       if (selectedThread?.id === data.thread.id) {
@@ -67,6 +103,17 @@ export function useThreads() {
     mutationFn: deleteThreadAPI,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['threads'] });
+      // Remove the thread from the infinite query cache
+       queryClient.setQueryData<InfiniteData<ThreadsResponse>>(['threads', searchQuery], (oldData) => {
+         if (oldData) {
+           const newPages = oldData.pages.map((page: ThreadsResponse) => ({
+             ...page,
+             threads: page.threads.filter((thread: Thread) => thread.id !== variables)
+           }));
+           return { ...oldData, pages: newPages };
+         }
+         return oldData;
+       });
       
       // Clear selected thread if it's the one being deleted
       if (selectedThread?.id === variables) {
@@ -174,21 +221,40 @@ export function useThreads() {
     }
   }, [isAuthenticated, queryClient]);
 
+  // Load more threads for infinite scrolling
+  const loadMoreThreads = useCallback(() => {
+    if (threadsQuery.hasNextPage && !threadsQuery.isFetchingNextPage) {
+      return threadsQuery.fetchNextPage();
+    }
+  }, [threadsQuery]);
+
+  // Search threads with debouncing handled by the component
+  const searchThreads = useCallback((query: string) => {
+    // This will be handled by changing the searchQuery parameter
+    // The component should manage the search state
+  }, []);
+
+  // Get flattened threads from all pages
+  const allThreads = threadsQuery.data?.pages.flatMap(page => page.threads) || [];
+
   return {
-    threads: threadsQuery.data || [],
+    threads: allThreads,
     isLoading: threadsQuery.isPending || 
                createThreadMutation.isPending || 
                updateThreadMutation.isPending || 
                deleteThreadMutation.isPending,
+    isLoadingMore: threadsQuery.isFetchingNextPage,
+    hasMore: threadsQuery.hasNextPage || false,
     error: threadsQuery.error?.message || null,
     selectedThread,
     setSelectedThread,
     fetchThreads,
+    loadMoreThreads,
+    searchThreads,
     createThread,
     loadThread,
     updateThread,
     deleteThread,
     isAuthenticated,
-    
   };
 }
