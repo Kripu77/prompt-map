@@ -77,10 +77,18 @@ export interface ThreadUpdateRequest {
   metadata?: Partial<Thread['metadata']>;
 }
 
+export interface PaginationParams {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}
+
 export interface ThreadsResponse {
   threads: Thread[];
-  total?: number;
-  hasMore?: boolean;
+  total: number;
+  hasMore: boolean;
+  limit: number;
+  offset: number;
 }
 
 export interface ThreadResponse {

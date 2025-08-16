@@ -1,17 +1,58 @@
 import { db } from '@/lib/db';
 import { conversations } from '@/lib/db/schema';
-import { and, eq, desc } from 'drizzle-orm';
+import { and, eq, desc, like, count } from 'drizzle-orm';
 import type { Thread, ThreadCreateRequest, ThreadUpdateRequest } from '@/types/api';
 
+export interface PaginationParams {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}
+
+export interface PaginatedThreadsResponse {
+  threads: Thread[];
+  total: number;
+  hasMore: boolean;
+  limit: number;
+  offset: number;
+}
+
 export class ThreadsService {
-  async getThreads(userId: string): Promise<Thread[]> {
+  async getThreads(userId: string, params: PaginationParams = {}): Promise<PaginatedThreadsResponse> {
     try {
+      const { limit = 20, offset = 0, search } = params;
+      
+      // Build where conditions
+      const whereConditions = [eq(conversations.userId, userId)];
+      if (search) {
+        whereConditions.push(like(conversations.title, `%${search}%`));
+      }
+      
+      // Get total count
+      const [totalResult] = await db
+        .select({ count: count() })
+        .from(conversations)
+        .where(and(...whereConditions));
+      
+      const total = totalResult.count;
+      
+      // Get paginated threads
       const threads = await db.query.conversations.findMany({
-        where: eq(conversations.userId, userId),
+        where: and(...whereConditions),
         orderBy: [desc(conversations.updatedAt)],
+        limit: limit,
+        offset: offset,
       });
       
-      return threads.map(this.mapToThread);
+      const hasMore = offset + threads.length < total;
+      
+      return {
+        threads: threads.map(this.mapToThread),
+        total,
+        hasMore,
+        limit,
+        offset,
+      };
     } catch (error) {
       throw new Error(`Failed to fetch threads: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

@@ -9,6 +9,7 @@ import type {
   ThreadsResponse,
   ThreadResponse,
   ThreadDeleteResponse,
+  PaginationParams,
   ApiError
 } from '@/types/api';
   
@@ -73,8 +74,17 @@ export const recordMindmapAPI = async (data: AnonymousMindmapData): Promise<bool
 
 
 // Thread API Functions
-export async function fetchThreadsAPI(): Promise<ThreadsResponse> {
-  const response = await fetch('/api/threads');
+export async function fetchThreadsAPI(params: PaginationParams = {}): Promise<ThreadsResponse> {
+  const { limit = 20, offset = 0, search } = params;
+  
+  const searchParams = new URLSearchParams();
+  searchParams.set('limit', limit.toString());
+  searchParams.set('offset', offset.toString());
+  if (search) {
+    searchParams.set('search', search);
+  }
+  
+  const response = await fetch(`/api/threads?${searchParams.toString()}`);
   
   if (!response.ok) {
     const errorData = await response.json() as ApiError;
@@ -82,7 +92,6 @@ export async function fetchThreadsAPI(): Promise<ThreadsResponse> {
   }
   
   const result = await response.json();
-  // The new API returns { success: true, data: { threads: [...] } }
   return result.data as ThreadsResponse;
 }
 
@@ -122,7 +131,6 @@ export function useCreateThread() {
   return useMutation({
     mutationFn: createThreadAPI,
     onSuccess: () => {
-      // Invalidate the threads query to trigger a controlled refetch
       queryClient.invalidateQueries({ queryKey: ['threads'] });
     }
   });
