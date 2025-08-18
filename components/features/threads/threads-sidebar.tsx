@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useThreads } from "@/hooks/use-threads";
 import type { Thread } from "@/types/api";
 import { useSession } from "next-auth/react";
@@ -56,15 +56,14 @@ interface GroupedThreads {
   older: Thread[];
 }
 
-const emptyGroupedThreads: GroupedThreads = {
-  today: [],
-  yesterday: [],
-  previous7Days: [],
-  previous30Days: [],
-  older: [],
-};
-
 export function ThreadsSidebar() {
+  const emptyGroupedThreads: GroupedThreads = useMemo(() => ({
+    today: [],
+    yesterday: [],
+    previous7Days: [],
+    previous30Days: [],
+    older: [],
+  }), []);
   const [searchQuery, setSearchQuery] = useState("");
   const [groupedThreads, setGroupedThreads] = useState<GroupedThreads>(emptyGroupedThreads);
   const [displayLimit, setDisplayLimit] = useState<number>(12);
@@ -76,7 +75,7 @@ export function ThreadsSidebar() {
   const { threads, isLoading, selectedThread, loadThread, deleteThread, fetchThreads } = useThreads();
   const { isOpen, setIsOpen } = useSidebarStore();
   const { mindmapData, setMindmapData, setPrompt, setIsLoading, setError } = useMindmapStore();
-  const { setReasoningContent, showForSavedThread } = useReasoningPanelStore();
+  const { setReasoningContent } = useReasoningPanelStore();
   const { setCurrentThread } = useThreadsStore();
   const { status } = useSession();
   const isAuthenticated = status === 'authenticated';
@@ -98,7 +97,7 @@ export function ThreadsSidebar() {
         hasFetchedRef.current = true;
       }
     }
-  }, [isOpen, isAuthenticated, fetchThreads, threads.length, isLoading]);
+  }, [isOpen, isAuthenticated, threads.length, isLoading]); // Removed fetchThreads to prevent infinite loops
 
 
   useEffect(() => {
@@ -111,7 +110,6 @@ export function ThreadsSidebar() {
     let timeoutId: NodeJS.Timeout;
     
     if (isAuthenticated && isOpen && mindmapData) {
-
       hasFetchedRef.current = false;
       
       timeoutId = setTimeout(() => {
@@ -122,7 +120,7 @@ export function ThreadsSidebar() {
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [mindmapData, isAuthenticated, isOpen, fetchThreads]);
+  }, [mindmapData, isAuthenticated, isOpen]);
 
 
 

@@ -10,7 +10,6 @@ import {
   $createParagraphNode,
   $getNodeByKey,
   RangeSelection,
-  BaseSelection,
   LexicalEditor,
   NodeKey
 } from "lexical";

@@ -1,4 +1,4 @@
-import { mindmapService } from '@/lib/api/services/mindmap-service';
+import { mindmapService } from '@/lib/api/services/core/mindmap-service';
 import { createSuccessResponse, createErrorResponse } from '@/lib/api/middleware/validation';
 
 export async function GET() {
@@ -8,7 +8,7 @@ export async function GET() {
     const envCheck = {
       openRouterApiKey: !!process.env.OPENROUTER_API_KEY,
       nextAuthSecret: !!process.env.NEXTAUTH_SECRET,
-      databaseUrl: !!process.env.DATABASE_URL,
+      databaseUrl: !!process.env.NEON_CONNECTION_STRING,
     };
     
     const isHealthy = serviceHealth.status === 'healthy' && 

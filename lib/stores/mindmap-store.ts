@@ -64,7 +64,6 @@ export const useMindmapStore = create<MindmapStore>()(
           const { promptHistory } = get();
           const newHistory = [...promptHistory, item];
           
-          // Keep only last 50 items for performance
           if (newHistory.length > 50) {
             newHistory.splice(0, newHistory.length - 50);
           }
@@ -83,7 +82,6 @@ export const useMindmapStore = create<MindmapStore>()(
       }),
       {
         name: 'mindmap-store',
-        // Only persist non-sensitive data
         partialize: (state) => ({
           prompt: state.prompt,
           isFollowUpMode: state.isFollowUpMode,
@@ -97,33 +95,24 @@ export const useMindmapStore = create<MindmapStore>()(
   )
 );
 
-// ============================================================================
-// SELECTORS
-// ============================================================================
-
 export const mindmapSelectors = {
-  // Get current mindmap state
   getCurrentState: () => useMindmapStore.getState(),
   
-  // Check if mindmap is ready for interaction
   isReady: () => {
     const state = useMindmapStore.getState();
     return !state.isLoading && state.mindmapData && !state.error;
   },
   
-  // Get the latest prompt from history
   getLatestPrompt: () => {
     const state = useMindmapStore.getState();
     return state.promptHistory[state.promptHistory.length - 1];
   },
   
-  // Check if there are follow-up prompts
   hasFollowUps: () => {
     const state = useMindmapStore.getState();
     return state.promptHistory.some(item => item.isFollowUp);
   },
   
-  // Get generation statistics
   getStats: () => {
     const state = useMindmapStore.getState();
     return {

@@ -1,62 +1,63 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
-export function cn(...inputs: ClassValue[]) {
+const MAX_TITLE_LENGTH = 200;
+const TRUNCATION_SUFFIX = '...';
+const TRUNCATION_OFFSET = 3;
+const DEFAULT_TITLE = "Mind Map";
+const SHORT_TITLE_THRESHOLD = 50;
+const MARKDOWN_PATTERN = /[#*_~`]/g;
+const SENTENCE_DELIMITERS = /[.!?]/;
+const HEADER_PATTERN = /^# (.+)$/m;
+
+export const cn = (...inputs: ClassValue[]) => {
   return twMerge(clsx(inputs))
 }
 
-/**
- * Extracts the root topic (main title) from the mindmap markdown content
- * Falls back to the prompt if the root topic can't be found
- * Ensures the title doesn't exceed 200 characters for API validation
- */
-export function extractMindmapTitle(mindmapContent: string | null): string | null {
+const truncateWithEllipsis = (text: string, maxLength: number): string => {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength - TRUNCATION_OFFSET) + TRUNCATION_SUFFIX;
+};
+
+const cleanMarkdownFormatting = (text: string): string => {
+  return text.replace(MARKDOWN_PATTERN, '');
+};
+
+const extractFirstSentence = (text: string): string => {
+  return text.split(SENTENCE_DELIMITERS)[0].trim();
+};
+
+const validateTitleLength = (title: string): string => {
+  return truncateWithEllipsis(title, MAX_TITLE_LENGTH);
+};
+
+export const extractMindmapTitle = (mindmapContent: string | null): string | null => {
   if (!mindmapContent) return null;
   
-  // Find the first level-1 header (# Title) in the markdown
-  const rootTopicMatch = mindmapContent.match(/^# (.+)$/m);
+  const rootTopicMatch = mindmapContent.match(HEADER_PATTERN);
   if (rootTopicMatch && rootTopicMatch[1]) {
     const title = rootTopicMatch[1].trim();
-    
-    // Ensure title doesn't exceed 200 characters (API validation limit)
-    if (title.length > 200) {
-      return title.substring(0, 197) + '...';
-    }
-    
-    return title;
+    return validateTitleLength(title);
   }
   
   return null;
-}
+};
 
-/**
- * Generates a human-readable title from a prompt string and mindmap content
- * Prioritizes extracting the title from the mindmap content first
- * Ensures the title doesn't exceed 200 characters for API validation
- */
-export function generateTitleFromPrompt(userPrompt: string, mindmapContent?: string | null): string {
-  // Try to extract title from mindmap content first
+export const generateTitleFromPrompt = (userPrompt: string, mindmapContent?: string | null): string => {
   if (mindmapContent) {
     const extractedTitle = extractMindmapTitle(mindmapContent);
     if (extractedTitle) return extractedTitle;
   }
   
-  if (!userPrompt) return "Mind Map";
+  if (!userPrompt) return DEFAULT_TITLE;
   
-  // Clean up the prompt if we couldn't extract a title from the mindmap
-  // Remove any markdown formatting
-  const cleanPrompt = userPrompt.replace(/[#*_~`]/g, '');
+  const cleanPrompt = cleanMarkdownFormatting(userPrompt);
+  const firstSentence = extractFirstSentence(cleanPrompt);
+  const validatedTitle = validateTitleLength(firstSentence);
   
-  // Get the first sentence or up to 50 characters
-  const title = cleanPrompt.split(/[.!?]/)[0].trim();
-  
-  // Ensure title doesn't exceed 200 characters (API validation limit)
-  if (title.length > 200) {
-    return title.substring(0, 197) + '...';
+  if (validatedTitle.length <= SHORT_TITLE_THRESHOLD) {
+    return validatedTitle;
   }
   
-  if (title.length <= 50) return title;
-  
-  // If longer than 50 chars but less than 200, truncate and add ellipsis
-  return title.substring(0, 47) + '...';
-}
+  return truncateWithEllipsis(validatedTitle, SHORT_TITLE_THRESHOLD);
+};

@@ -1,185 +1,190 @@
 import { toPng, toSvg } from 'html-to-image';
-import { ReactFlowInstance, Node } from '@xyflow/react';
+import { ReactFlowInstance, Node, Edge, Viewport } from '@xyflow/react';
 
-/**
- * Export mindmap as PNG image
- */
-export async function exportMindmap(
+type ExportBounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  width: number;
+  height: number;
+};
+
+type ExportOptions = {
+  backgroundColor: string;
+  width: number;
+  height: number;
+  style: {
+    transform: string;
+  };
+};
+
+const DEFAULT_NODE_WIDTH = 200;
+const DEFAULT_NODE_HEIGHT = 100;
+const EXPORT_PADDING = 50;
+const DARK_BACKGROUND = '#0f172a';
+const LIGHT_BACKGROUND = '#ffffff';
+
+const getViewportElement = (): HTMLElement | null => {
+  return document.querySelector('.react-flow__viewport') as HTMLElement;
+};
+
+const calculateNodeBounds = (nodes: Node[]): ExportBounds => {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  
+  nodes.forEach((node) => {
+    const { x, y } = node.position;
+    const width = node.width || DEFAULT_NODE_WIDTH;
+    const height = node.height || DEFAULT_NODE_HEIGHT;
+    
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
+  });
+  
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX + (EXPORT_PADDING * 2),
+    height: maxY - minY + (EXPORT_PADDING * 2)
+  };
+};
+
+const createExportOptions = (bounds: ExportBounds, theme?: string): ExportOptions => ({
+  backgroundColor: theme === 'dark' ? DARK_BACKGROUND : LIGHT_BACKGROUND,
+  width: bounds.width,
+  height: bounds.height,
+  style: {
+    transform: `translate(${-bounds.minX + EXPORT_PADDING}px, ${-bounds.minY + EXPORT_PADDING}px)`,
+  },
+});
+
+const downloadFile = (dataUrl: string, filename: string): void => {
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = dataUrl;
+  link.click();
+};
+
+const generateFilename = (extension: string): string => {
+  const date = new Date().toISOString().split('T')[0];
+  return `mindmap-${date}.${extension}`;
+};
+
+const validateExportPrerequisites = (
   reactFlowInstance: ReactFlowInstance | null,
-  theme?: string
-): Promise<void> {
+  viewport: HTMLElement | null,
+  nodes: Node[]
+): boolean => {
   if (!reactFlowInstance) {
     console.warn('React Flow instance not available for export');
+    return false;
+  }
+  
+  if (!viewport) {
+    console.warn('React Flow viewport not found');
+    return false;
+  }
+  
+  if (nodes.length === 0) {
+    console.warn('No nodes to export');
+    return false;
+  }
+  
+  return true;
+};
+
+export const exportMindmap = async (
+  reactFlowInstance: ReactFlowInstance | null,
+  theme?: string
+): Promise<void> => {
+  const viewport = getViewportElement();
+  const nodes = reactFlowInstance?.getNodes() || [];
+  
+  if (!validateExportPrerequisites(reactFlowInstance, viewport, nodes)) {
     return;
   }
-
+  
   try {
-    // Get the React Flow viewport element
-    const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!viewport) {
-      console.warn('React Flow viewport not found');
-      return;
-    }
-
-    // Get the bounds of all nodes to determine the export area
-    const nodes = reactFlowInstance.getNodes();
-    if (nodes.length === 0) {
-      console.warn('No nodes to export');
-      return;
-    }
-
-    // Calculate bounds
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    nodes.forEach((node: Node) => {
-      const x = node.position.x;
-      const y = node.position.y;
-      const width = node.width || 200;
-      const height = node.height || 100;
-      
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + width);
-      maxY = Math.max(maxY, y + height);
-    });
-
-    // Add padding
-    const padding = 50;
-    const exportWidth = maxX - minX + (padding * 2);
-    const exportHeight = maxY - minY + (padding * 2);
-
-    // Export as PNG
-    const dataUrl = await toPng(viewport, {
-      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
-      width: exportWidth,
-      height: exportHeight,
-      style: {
-        transform: `translate(${-minX + padding}px, ${-minY + padding}px)`,
-      },
-    });
-
-    // Create download link
-    const link = document.createElement('a');
-    link.download = `mindmap-${new Date().toISOString().split('T')[0]}.png`;
-    link.href = dataUrl;
-    link.click();
+    const bounds = calculateNodeBounds(nodes);
+    const options = createExportOptions(bounds, theme);
+    const dataUrl = await toPng(viewport!, options);
+    
+    downloadFile(dataUrl, generateFilename('png'));
   } catch (error) {
     console.error('Failed to export mindmap:', error);
   }
-}
+};
 
-/**
- * Export mindmap as SVG
- */
-export async function exportMindmapAsSvg(
+export const exportMindmapAsSvg = async (
   reactFlowInstance: ReactFlowInstance | null,
   theme?: string
-): Promise<void> {
-  if (!reactFlowInstance) {
-    console.warn('React Flow instance not available for export');
+): Promise<void> => {
+  const viewport = getViewportElement();
+  const nodes = reactFlowInstance?.getNodes() || [];
+  
+  if (!validateExportPrerequisites(reactFlowInstance, viewport, nodes)) {
     return;
   }
-
+  
   try {
-    const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!viewport) {
-      console.warn('React Flow viewport not found');
-      return;
-    }
-
-    const nodes = reactFlowInstance.getNodes();
-    if (nodes.length === 0) {
-      console.warn('No nodes to export');
-      return;
-    }
-
-    // Calculate bounds
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    nodes.forEach((node: Node) => {
-      const x = node.position.x;
-      const y = node.position.y;
-      const width = node.width || 200;
-      const height = node.height || 100;
-      
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + width);
-      maxY = Math.max(maxY, y + height);
-    });
-
-    const padding = 50;
-    const exportWidth = maxX - minX + (padding * 2);
-    const exportHeight = maxY - minY + (padding * 2);
-
-    // Export as SVG
-    const dataUrl = await toSvg(viewport, {
-      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
-      width: exportWidth,
-      height: exportHeight,
-      style: {
-        transform: `translate(${-minX + padding}px, ${-minY + padding}px)`,
-      },
-    });
-
-    // Create download link
-    const link = document.createElement('a');
-    link.download = `mindmap-${new Date().toISOString().split('T')[0]}.svg`;
-    link.href = dataUrl;
-    link.click();
+    const bounds = calculateNodeBounds(nodes);
+    const options = createExportOptions(bounds, theme);
+    const dataUrl = await toSvg(viewport!, options);
+    
+    downloadFile(dataUrl, generateFilename('svg'));
   } catch (error) {
     console.error('Failed to export mindmap as SVG:', error);
   }
-}
+};
 
-/**
- * Export mindmap data as JSON
- */
-export function exportMindmapAsJson(
+type MindmapData = {
+  nodes: Node[];
+  edges: Edge[];
+  viewport: Viewport;
+  exportedAt: string;
+};
+
+const createMindmapData = (reactFlowInstance: ReactFlowInstance): MindmapData => ({
+  nodes: reactFlowInstance.getNodes(),
+  edges: reactFlowInstance.getEdges(),
+  viewport: reactFlowInstance.getViewport(),
+  exportedAt: new Date().toISOString(),
+});
+
+const downloadJsonFile = (data: MindmapData): void => {
+  const dataStr = JSON.stringify(data, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+  
+  downloadFile(url, generateFilename('json'));
+  URL.revokeObjectURL(url);
+};
+
+export const exportMindmapAsJson = (
   reactFlowInstance: ReactFlowInstance | null
-): void {
+): void => {
   if (!reactFlowInstance) {
     console.warn('React Flow instance not available for export');
     return;
   }
 
   try {
-    const nodes = reactFlowInstance.getNodes();
-    const edges = reactFlowInstance.getEdges();
-    
-    const mindmapData = {
-      nodes,
-      edges,
-      viewport: reactFlowInstance.getViewport(),
-      exportedAt: new Date().toISOString(),
-    };
-
-    const dataStr = JSON.stringify(mindmapData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    
-    const link = document.createElement('a');
-    link.download = `mindmap-data-${new Date().toISOString().split('T')[0]}.json`;
-    link.href = url;
-    link.click();
-    
-    URL.revokeObjectURL(url);
+    const mindmapData = createMindmapData(reactFlowInstance);
+    downloadJsonFile(mindmapData);
   } catch (error) {
     console.error('Failed to export mindmap as JSON:', error);
   }
-}
+};
 
-// Legacy function stubs for backward compatibility
-export function zoomIn() {
-  console.warn('zoomIn function is deprecated. Use React Flow controls instead.');
-}
+const createDeprecationWarning = (functionName: string, alternative: string) => () => {
+  console.warn(`${functionName} function is deprecated. Use ${alternative} instead.`);
+};
 
-export function zoomOut() {
-  console.warn('zoomOut function is deprecated. Use React Flow controls instead.');
-}
-
-export function toggleFullscreen() {
-  console.warn('toggleFullscreen function is deprecated. Use React Flow controls instead.');
-}
-
-export function fitContent() {
-  console.warn('fitContent function is deprecated. Use React Flow fitView instead.');
-}
+export const zoomIn = createDeprecationWarning('zoomIn', 'React Flow controls');
+export const zoomOut = createDeprecationWarning('zoomOut', 'React Flow controls');
+export const toggleFullscreen = createDeprecationWarning('toggleFullscreen', 'React Flow controls');
+export const fitContent = createDeprecationWarning('fitContent', 'React Flow fitView');

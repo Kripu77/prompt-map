@@ -6,6 +6,7 @@ import { Handle, Position } from '@xyflow/react';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
 import { NodeData } from '@/components/features/mindmap/types';
 import { calculateNodeDimensions } from '@/lib/utils/node-dimensions';
+import { HANDLE_STYLES, MOTION_CONFIGS } from '@/components/features/mindmap/constants';
 
 interface BaseNodeProps {
   data: NodeData;
@@ -65,14 +66,7 @@ export function BaseNode({
   const finalWidth = actualDimensions?.width || calculatedWidth;
   const finalHeight = actualDimensions?.height || calculatedHeight;
   
-  const handleStyle = {
-    transform: 'translateY(-50%)',
-    background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-    border: '2px solid white',
-    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
-    width: '12px',
-    height: '12px',
-  };
+  const handleStyle = HANDLE_STYLES.DEFAULT;
 
   if (nodeType === 'root') {
     return (
@@ -89,7 +83,7 @@ export function BaseNode({
           <Handle 
             type="source" 
             position={Position.Right} 
-            style={{ right: -8, top: '50%', ...handleStyle }} 
+            style={{ ...HANDLE_STYLES.POSITIONS.SOURCE_RIGHT, ...handleStyle }} 
           />
         )}
         
@@ -107,10 +101,12 @@ export function BaseNode({
     );
   }
 
+  const motionConfig = MOTION_CONFIGS[nodeType.toUpperCase() as keyof typeof MOTION_CONFIGS] || MOTION_CONFIGS.BRANCH;
+  
   return (
     <motion.div
-      initial={{ scale: 0, opacity: 0, x: nodeType === 'leaf' ? -30 : -50 }}
-      animate={{ scale: 1, opacity: 1, x: 0 }}
+      initial={motionConfig.initial}
+      animate={motionConfig.animate}
       transition={animationConfig}
       className={className}
       style={{ 
@@ -124,7 +120,7 @@ export function BaseNode({
         <Handle 
           type="target" 
           position={Position.Left} 
-          style={{ left: -6, top: '50%', ...handleStyle }} 
+          style={{ ...HANDLE_STYLES.POSITIONS.TARGET_LEFT, ...handleStyle }} 
         />
       )}
       
@@ -132,7 +128,7 @@ export function BaseNode({
         <Handle 
           type="source" 
           position={Position.Right} 
-          style={{ right: -6, top: '50%', ...handleStyle }} 
+          style={{ ...HANDLE_STYLES.POSITIONS.SOURCE_RIGHT_BRANCH, ...handleStyle }} 
         />
       )}
       

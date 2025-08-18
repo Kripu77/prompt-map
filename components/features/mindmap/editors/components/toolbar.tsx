@@ -10,7 +10,8 @@ import {
   $getNodeByKey,
   EditorState,
   LexicalEditor,
-  BaseSelection
+  BaseSelection,
+  RangeSelection
 } from "lexical";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -222,25 +223,9 @@ function FloatingLinkEditor({ editor }: { editor: LexicalEditor }) {
   );
 }
 
-function Select({ onChange, className, options, value }: {
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  className: string;
-  options: string[];
-  value: string;
-}) {
-  return (
-    <select className={className} onChange={onChange} value={value}>
-      <option hidden={true} value="" />
-      {options.map((option: string) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
-  );
-}
 
-function getSelectedNode(selection: any) {
+
+function getSelectedNode(selection: RangeSelection) {
   const anchor = selection.anchor;
   const focus = selection.focus;
   const anchorNode = selection.anchor.getNode();
@@ -493,7 +478,7 @@ export default function ToolbarPlugin() {
       }),
       editor.registerCommand(
         SELECTION_CHANGE_COMMAND,
-        (_payload: unknown, newEditor: LexicalEditor) => {
+        () => {
           updateToolbar();
           return false;
         },
@@ -539,7 +524,7 @@ export default function ToolbarPlugin() {
                 }
                 className="flex items-center gap-2 px-3"
               >
-                <span className="text-sm">{(blockTypeToBlockName as any)[blockType]}</span>
+                <span className="text-sm">{blockTypeToBlockName[blockType as keyof typeof blockTypeToBlockName]}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>

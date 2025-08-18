@@ -27,7 +27,7 @@ export const webSearchTool = tool({
       console.log(`Searching web for: "${query}"`);
       const { results } = await exa.searchAndContents(query, {
         livecrawl: 'always',
-        numResults: 5,
+        numResults: 3,
       });
 
       if (!results || results.length === 0) {
@@ -39,7 +39,7 @@ export const webSearchTool = tool({
       const formattedResults = results.map(r => ({
         title: r.title || '',
         url: r.url,
-        content: r.text,
+        content: r.text ? r.text.substring(0, 800) : '', // Truncate content to 800 characters
       }));
       
       console.log(`Returning ${formattedResults.length} formatted results`);

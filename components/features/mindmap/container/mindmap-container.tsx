@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useStreamingMindmap } from '@/hooks/use-streaming-mindmap';
+import { useAISdkMindmap } from '@/hooks/use-ai-sdk-mindmap';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
 import { useSidePanelStore } from '@/lib/stores/side-panel-store';
 import { useSidebarStore } from '@/lib/stores/sidebar-store';
@@ -15,9 +15,25 @@ import { generateTitleFromPrompt } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useUserSettings } from '@/hooks/use-user-settings';
 import { useReasoningPanelStore } from '@/lib/stores/reasoning-panel-store';
-import type { MindmapMode } from '@/lib/api/llm/prompts/mindmap-prompts';
+import type { MindmapMode } from '@/lib/api/llm/prompts';
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ai-elements/reasoning';
+import { Tool, ToolHeader, ToolContent, ToolInput, ToolOutput } from '@/components/ai-elements/tool';
 
+// Helper function to map tool call states to Tool component states
+const mapToolCallState = (state: 'pending' | 'running' | 'completed' | 'error') => {
+  switch (state) {
+    case 'pending':
+      return 'input-streaming' as const;
+    case 'running':
+      return 'input-available' as const;
+    case 'completed':
+      return 'output-available' as const;
+    case 'error':
+      return 'output-error' as const;
+    default:
+      return 'input-streaming' as const;
+  }
+};
 
 export function MindmapContainer() {
   const { mindmapData, isLoading: storeLoading } = useMindmapStore();
@@ -31,32 +47,40 @@ export function MindmapContainer() {
     isComplete,
     error,
     progress,
+    toolCalls,
+    sources,
     generateMindmap,
     generateFollowUp,
     stopGeneration,
     resetStream,
-  } = useStreamingMindmap();
+  } = useAISdkMindmap();
   const { reasoningContent: savedReasoningContent, reasoningDuration } = useReasoningPanelStore();
   
   // Combine reasoning content from streaming and saved sources
-  const reasoningContent = streamingReasoningContent || savedReasoningContent;
-  
-  // Debug log for reasoning duration
-  console.log('MindmapContainer reasoningDuration:', reasoningDuration);
+  const reasoningContent = useMemo(() => {
+    return streamingReasoningContent || savedReasoningContent;
+  }, [streamingReasoningContent, savedReasoningContent]);
   
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [topicShiftDetected, setTopicShiftDetected] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
-  const displayContent = streamingContent || mindmapData;
-  const isGenerating = isStreaming || storeLoading;
+  const displayContent = useMemo(() => {
+    return streamingContent || mindmapData;
+  }, [streamingContent, mindmapData]);
   
-  const mapTitle = displayContent 
-    ? generateTitleFromPrompt(promptHistory[promptHistory.length - 1] || "Mindmap", displayContent) 
-    : "Generate a Mind Map";
+  const isGenerating = useMemo(() => {
+    return isStreaming || storeLoading;
+  }, [isStreaming, storeLoading]);
+  
+  const mapTitle = useMemo(() => {
+    return displayContent 
+      ? generateTitleFromPrompt(promptHistory[promptHistory.length - 1] || "Mindmap", displayContent) 
+      : "Generate a Mind Map";
+  }, [displayContent, promptHistory]);
 
-  const handlePromptSubmit = async (value: string) => {
+  const handlePromptSubmit = useCallback(async (value: string) => {
     try {
       resetStream();
       
@@ -92,14 +116,14 @@ export function MindmapContainer() {
       console.error('Error processing prompt:', error);
       toast.error('Failed to process prompt. Please try again.');
     }
-  };
+  }, [isFollowUpMode, promptHistory, displayContent, resetStream, setSidebarOpen, generateMindmap, generateFollowUp]);
 
-  const checkTopicShift = async (): Promise<boolean> => {
+  const checkTopicShift = useCallback(async (): Promise<boolean> => {
     if (!displayContent || promptHistory.length === 0) return false;
     return false;
-  };
+  }, [displayContent, promptHistory]);
 
-  const handleTopicShift = () => {
+  const handleTopicShift = useCallback(() => {
     if (pendingPrompt) {
       setTopicShiftDetected(false);
       setIsFollowUpMode(false);
@@ -116,9 +140,9 @@ export function MindmapContainer() {
       
       setPendingPrompt(null);
     }
-  };
+  }, [pendingPrompt, resetStream, setSidebarOpen, generateMindmap]);
 
-  const continueDespiteShift = () => {
+  const continueDespiteShift = useCallback(() => {
     if (pendingPrompt) {
       setTopicShiftDetected(false);
       setPromptHistory(prev => [...prev, pendingPrompt]);
@@ -135,22 +159,22 @@ export function MindmapContainer() {
       
       setPendingPrompt(null);
     }
-  };
+  }, [pendingPrompt, promptHistory, displayContent, setSidebarOpen, generateFollowUp]);
 
-  const handleSavePartial = () => {
+  const handleSavePartial = useCallback(() => {
     if (streamingContent) {
       toast.success('Partial mindmap saved!');
     }
-  };
+  }, [streamingContent]);
 
-  const handleModeChange = async (newMode: MindmapMode) => {
+  const handleModeChange = useCallback(async (newMode: MindmapMode) => {
     try {
       await setMindmapMode(newMode);
       toast.success(`✨ Switched to ${newMode} mode`);
     } catch {
       toast.error('Failed to update mindmap mode');
     }
-  };
+  }, [setMindmapMode]);
 
   return (
     <div className="bg-background w-full h-full relative overflow-hidden">
@@ -231,7 +255,7 @@ export function MindmapContainer() {
                   Powered by AI with instant streaming for the best experience
                 </p>
               </motion.div>
-            ) : isGenerating && !streamingContent && reasoningContent ? (
+            ) : isGenerating ? (
 
               <motion.div 
                 className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto px-4 pb-32"
@@ -291,6 +315,60 @@ export function MindmapContainer() {
                   </Reasoning>
                 </motion.div>
 
+                {/* Tool Calls Display */}
+                {toolCalls.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.5 }}
+                    className="w-full max-w-2xl mt-6 space-y-3 mb-4"
+                  >
+                    {toolCalls.map((toolCall) => (
+                      <Tool key={toolCall.id} defaultOpen={true}>
+                        <ToolHeader
+                          type={toolCall.type}
+                          state={mapToolCallState(toolCall.state)}
+                        />
+                        <ToolContent>
+                          <ToolInput input={toolCall.input} />
+                          {toolCall.output && (
+                            <ToolOutput
+                              output={typeof toolCall.output === 'string' ? toolCall.output : JSON.stringify(toolCall.output, null, 2)}
+                              errorText={toolCall.state === 'error' ? 'Tool execution failed' : undefined}
+                            />
+                          )}
+                        </ToolContent>
+                      </Tool>
+                    ))}
+                  </motion.div>
+                )}
+
+                {/* Sources Display */}
+                {sources.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.5 }}
+                    className="w-full max-w-2xl mt-6"
+                  >
+                    <div className="bg-card/30 backdrop-blur-sm border border-border/30 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-muted-foreground mb-3">Sources</h4>
+                      <div className="space-y-2">
+                        {sources.map((source, index) => (
+                          <div key={index} className="text-xs text-muted-foreground/80">
+                            <a href={source.url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                              {source.title || source.url}
+                            </a>
+                            {source.description && (
+                              <p className="mt-1 text-muted-foreground/60">{source.description}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
                 {/*  Progress indicator - only show when there's actual progress */}
                 {isStreaming && progress.wordCount > 0 && (
                   <motion.div
@@ -314,7 +392,7 @@ export function MindmapContainer() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
               >
-                {streamingContent ? (
+                {streamingContent && isStreaming && (streamingContent.includes('nodes') || streamingContent.includes('edges')) ? (
                   <StreamingMindmapView
                     streamingContent={streamingContent}
                     isStreaming={isStreaming}
@@ -323,8 +401,139 @@ export function MindmapContainer() {
                     onStop={stopGeneration}
                     onSave={handleSavePartial}
                   />
+                ) : streamingContent && isStreaming ? (
+                  // Show AI components when streaming but no mindmap data yet
+                  <motion.div 
+                    className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto px-4 pb-32"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    {/* Simple Brain Icon */}
+                    <motion.div className="relative flex items-center justify-center mb-8">
+                      <motion.div
+                        animate={{ 
+                          rotate: [0, 360],
+                          scale: [1, 1.1, 1]
+                        }}
+                        transition={{ 
+                          rotate: { duration: 8, repeat: Infinity, ease: "linear" },
+                          scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                        className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-lg"
+                      >
+                        <Brain className="h-8 w-8 text-primary" />
+                      </motion.div>
+                    </motion.div>
+
+                    {/* Title */}
+                    <motion.div className="text-center space-y-4 mb-8">
+                      <motion.h3 
+                        className="text-2xl font-bold text-foreground"
+                        animate={{ opacity: [0.8, 1, 0.8] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        AI is thinking...
+                      </motion.h3>
+                      <p className="text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
+                        Processing your request and preparing the mindmap
+                      </p>
+                    </motion.div>
+
+                    {/* Reasoning Component */}
+                    {reasoningContent && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3, duration: 0.5 }}
+                        className="w-full max-w-2xl"
+                      >
+                        <Reasoning 
+                          className="w-full bg-card/30 backdrop-blur-sm border border-border/30 rounded-lg p-" 
+                          isStreaming={isStreaming && !isComplete}
+                          defaultOpen={true}
+                          duration={reasoningDuration}
+                        >
+                          <ReasoningTrigger className="text-muted-foreground/80 font-light" />
+                          <ReasoningContent className="mt-3 h-32 overflow-y-auto text-sm font-light text-muted-foreground/90 leading-relaxed scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
+                            {reasoningContent}
+                          </ReasoningContent>
+                        </Reasoning>
+                      </motion.div>
+                    )}
+
+                    {/* Tool Calls Display */}
+                    {toolCalls.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4, duration: 0.5 }}
+                        className="w-full max-w-2xl mt-6 space-y-3"
+                      >
+                        {toolCalls.map((toolCall) => (
+                          <Tool key={toolCall.id} defaultOpen={true}>
+                            <ToolHeader
+                              type={toolCall.type}
+                              state={mapToolCallState(toolCall.state)}
+                            />
+                            <ToolContent>
+                              <ToolInput input={toolCall.input} />
+                              {toolCall.output && (
+                                <ToolOutput
+                                  output={typeof toolCall.output === 'string' ? toolCall.output : JSON.stringify(toolCall.output, null, 2)}
+                                  errorText={toolCall.state === 'error' ? 'Tool execution failed' : undefined}
+                                />
+                              )}
+                            </ToolContent>
+                          </Tool>
+                        ))}
+                      </motion.div>
+                    )}
+
+                    {/* Sources Display */}
+                    {sources.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5, duration: 0.5 }}
+                        className="w-full max-w-2xl mt-6"
+                      >
+                        <div className="bg-card/30 backdrop-blur-sm border border-border/30 rounded-lg p-4">
+                          <h4 className="text-sm font-medium text-muted-foreground mb-3">Sources</h4>
+                          <div className="space-y-2">
+                            {sources.map((source, index) => (
+                              <div key={index} className="text-xs text-muted-foreground/80">
+                                <a href={source.url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                                  {source.title || source.url}
+                                </a>
+                                {source.description && (
+                                  <p className="mt-1 text-muted-foreground/60">{source.description}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Progress indicator */}
+                    {progress.wordCount > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="flex items-center gap-4 mt-8 text-sm text-muted-foreground"
+                      >
+                        <div className="w-px h-4 bg-border" />
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                          <span>{Math.round(progress.estimatedProgress)}% complete</span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.div>
                 ) : (
-                  <ReactFlowMindmapView mindmapData={mindmapData || ''} />
+                  <ReactFlowMindmapView mindmapData={displayContent || ''} />
                 )}
               </motion.div>
             )}

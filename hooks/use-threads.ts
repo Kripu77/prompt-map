@@ -81,7 +81,6 @@ export function useThreads() {
     }
   });
   
-  // Wrapper functions to maintain the same API
 
   // Create thread with auth check
   const isAuthenticatedRef = useRef(isAuthenticated);

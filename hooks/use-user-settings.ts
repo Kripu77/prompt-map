@@ -38,7 +38,7 @@ export function useUserSettings() {
       setSettings(null);
       setLoading(false);
     }
-  }, [session?.user?.id]); // Removed loadSettings from dependencies
+  }, [session?.user?.id]);
 
   const updateSettings = async (updates: UserSettingsUpdate) => {
     if (!session?.user?.id || !settings) return;

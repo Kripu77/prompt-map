@@ -9,7 +9,6 @@ export {
   getAppState
 } from './stores';
 
-// Re-export types
 export type {
   MindmapStore,
   SidebarStore,

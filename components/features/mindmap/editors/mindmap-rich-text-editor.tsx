@@ -21,7 +21,9 @@ import { cn } from '@/lib/utils';
 
 // Import modular components
 import { EquationNode } from './nodes/equation-node';
+import { AIElementNode } from './nodes/ai-element-node';
 import { TypewriterPlugin } from './plugins/typewriter-plugin';
+import { AIElementsPlugin } from './plugins/ai-elements-plugin';
 import { CodeHighlightPlugin } from './plugins/code-highlight-plugin';
 import { CustomLinkPlugin } from './plugins/custom-link-plugin';
 import { EquationPlugin } from './plugins/equation-plugin';
@@ -43,13 +45,29 @@ interface MindmapRichTextEditorProps {
   streamingContent?: string;
   isStreaming?: boolean;
   sources?: SourceData[];
+  toolCalls?: Array<{
+    id: string;
+    type: string;
+    state: 'pending' | 'running' | 'completed' | 'error';
+    input: any;
+    output?: any;
+    errorText?: string;
+  }>;
+  tasks?: Array<{
+    id: string;
+    content: string;
+    status: 'pending' | 'in_progress' | 'completed';
+    priority: 'high' | 'medium' | 'low';
+  }>;
 }
 
 export function MindmapRichTextEditor({ 
   className, 
   streamingContent, 
   isStreaming, 
-  sources 
+  sources,
+  toolCalls = [],
+  tasks = []
 }: MindmapRichTextEditorProps) {
   const initialConfig = {
     namespace: 'MindmapEditor',
@@ -65,6 +83,7 @@ export function MindmapRichTextEditor({
       LinkNode,
       AutoLinkNode,
       EquationNode,
+      AIElementNode,
       TableNode,
       TableCellNode,
       TableRowNode,
@@ -109,6 +128,12 @@ export function MindmapRichTextEditor({
           <TypewriterPlugin 
             streamingContent={streamingContent} 
             isStreaming={isStreaming} 
+          />
+          <AIElementsPlugin 
+            toolCalls={toolCalls}
+            tasks={tasks}
+            sources={sources?.map(s => ({ title: s.title, url: s.url, description: s.description })) || []}
+            isStreaming={isStreaming}
           />
           <CodeHighlightPlugin />
           <CustomLinkPlugin />

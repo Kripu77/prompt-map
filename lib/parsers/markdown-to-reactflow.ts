@@ -1,4 +1,4 @@
-import { Node, Edge, MarkerType } from '@xyflow/react';
+import { Node, Edge } from '@xyflow/react';
 
 export interface TreeNode {
   id: string;
@@ -126,7 +126,6 @@ export function parseMarkdownToTree(markdown: string): TreeNode {
 export function treeToReactFlow(tree: TreeNode): ReactFlowData {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-
   const traverse = (node: TreeNode, parentId?: string) => {
     const hasChildren = node.children.length > 0;
     let nodeType = 'leaf';
@@ -153,16 +152,7 @@ export function treeToReactFlow(tree: TreeNode): ReactFlowData {
         id: `${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: 'default',
-        style: {
-          stroke: getEdgeColor(node.level),
-          strokeWidth: Math.max(4 - node.level, 1),
-          strokeDasharray: node.level > 2 ? '5,5' : 'none',
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: getEdgeColor(node.level),
-        },
+        animated: true,
       });
     }
 
@@ -172,8 +162,3 @@ export function treeToReactFlow(tree: TreeNode): ReactFlowData {
   traverse(tree);
   return { nodes, edges };
 }
-
-const getEdgeColor = (level: number): string => {
-  const colors = ['#667eea', '#f093fb', '#4facfe', '#a8edea'];
-  return colors[Math.min(level - 1, colors.length - 1)];
-};

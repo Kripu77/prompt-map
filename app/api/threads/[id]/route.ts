@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { threadsService } from '@/lib/api/services/threads-service';
+import { threadsService } from '@/lib/api/services/user/threads-service';
 import {
   validateRequestBody,
   createValidationErrorResponse,
@@ -87,4 +87,4 @@ export async function DELETE(
     console.error('Error deleting thread:', error);
     return createErrorResponse('Failed to delete thread', 500, 'DELETE_FAILED');
   }
-} 
+}

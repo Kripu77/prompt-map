@@ -1,13 +1,11 @@
 
-import { llmClient } from '../llm/client';
-import {
-  createInitialMindmapPrompt,
-  createFollowUpMindmapPrompt,
-  createTopicShiftPrompt,
-  enhancePromptWithContext,
-  addChainOfThoughtPrompting
-} from '../llm/prompts/mindmap-prompts';
+import { llmClient } from '../../llm/client';
+import { MindmapPromptOrchestrator } from '../../llm/prompts';
 import { webSearchTool } from '@/lib/tools/web-search-tool';
+import { WebSearchDetector, type WebSearchConfig } from '../infrastructure/web-search-detector';
+import { PromptEnhancementService, type PromptEnhancementOptions } from '../infrastructure/prompt-enhancement-service';
+import { MindmapValidator } from '../infrastructure/mindmap-validator';
+import { ErrorHandler } from '../infrastructure/error-handler';
 import type { 
   PromptPayload, 
   MindmapResponse, 
@@ -21,6 +19,15 @@ export interface MindmapGenerationOptions {
   format?: 'academic' | 'practical' | 'creative';
   useChainOfThought?: boolean;
   customDate?: Date;
+  enableWebSearch?: boolean;
+}
+
+export interface ServiceDependencies {
+  orchestrator?: MindmapPromptOrchestrator;
+  webSearchDetector?: typeof WebSearchDetector;
+  promptEnhancer?: typeof PromptEnhancementService;
+  validator?: typeof MindmapValidator;
+  errorHandler?: typeof ErrorHandler;
 }
 
 export interface TopicShiftAnalysis {
@@ -32,38 +39,53 @@ export interface TopicShiftAnalysis {
 
 
 export class MindmapService {
-  /**
-   * Generate a new mindmap from a prompt
-   */
+  private orchestrator: MindmapPromptOrchestrator;
+  private webSearchDetector: typeof WebSearchDetector;
+  private promptEnhancer: typeof PromptEnhancementService;
+  private validator: typeof MindmapValidator;
+  private errorHandler: typeof ErrorHandler;
+
+  constructor(dependencies: ServiceDependencies = {}) {
+    this.orchestrator = dependencies.orchestrator || new MindmapPromptOrchestrator();
+    this.webSearchDetector = dependencies.webSearchDetector || WebSearchDetector;
+    this.promptEnhancer = dependencies.promptEnhancer || PromptEnhancementService;
+    this.validator = dependencies.validator || MindmapValidator;
+    this.errorHandler = dependencies.errorHandler || ErrorHandler;
+  }
   async generateMindmap(
     payload: PromptPayload,
-    options: MindmapGenerationOptions & { enableWebSearch?: boolean } = {}
+    options: MindmapGenerationOptions = {}
   ): Promise<MindmapResponse> {
     try {
-      // Auto-detect if web search should be enabled based on prompt content
-      const promptText = payload.prompt.toLowerCase();
-      const hasCurrentKeywords = [
-        'latest', 'recent', 'current', 'today', 'now', 'breaking', 'update', 
-        'trending', '2025', 'news', 'weather', 'stock', 'market'
-      ].some(keyword => promptText.includes(keyword));
+      const promptValidation = this.validator.validatePrompt(payload.prompt);
+      if (!promptValidation.isValid) {
+        throw this.errorHandler.createValidationError(
+          `Invalid prompt: ${promptValidation.errors.join(', ')}`,
+          { operation: 'generateMindmap', prompt: payload.prompt }
+        );
+      }
+
+      const webSearchConfig: WebSearchConfig = {
+        enableWebSearch: options.enableWebSearch,
+        hasExaKey: !!process.env.EXA_API_KEY
+      };
       
-      // Enable web search by default, or if current keywords detected, or if explicitly requested
-      const enableWebSearch = options.enableWebSearch ?? hasCurrentKeywords ?? true;
-      const hasExaKey = !!process.env.EXA_API_KEY;
+      const webSearchResult = this.webSearchDetector.detect(payload.prompt, webSearchConfig);
+      this.webSearchDetector.validateConfiguration(webSearchResult);
       
-      console.log(`Non-streaming web search enabled: ${enableWebSearch}, EXA_API_KEY present: ${hasExaKey}`);
+      console.log(`Non-streaming web search enabled: ${webSearchResult.shouldEnableWebSearch}, EXA_API_KEY present: ${webSearchResult.hasExaKey}`);
       
       let messages;
       
       if (payload.context?.isFollowUp && payload.context.existingMindmap) {
         // Generate follow-up mindmap
-        messages = createFollowUpMindmapPrompt(
+        messages = this.orchestrator.createFollowUpPrompt(
           payload.context.originalPrompt || payload.prompt,
           payload.context.existingMindmap as string,
           payload.prompt,
           payload.context.previousPrompts || [],
-          undefined,
-          options.customDate
+          'comprehensive',
+          options.customDate ? { customDate: options.customDate } : undefined
         );
       } else {
         // Generate initial mindmap
@@ -71,25 +93,31 @@ export class MindmapService {
         
         // Apply context enhancements
         if (Object.keys(options).length > 0) {
-          enhancedPrompt = enhancePromptWithContext(enhancedPrompt, options);
+          const contextStr = Object.entries(options)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(', ');
+          enhancedPrompt = `${contextStr}\n\n${enhancedPrompt}`;
         }
         
-        // Add chain of thought if requested
-        if (options.useChainOfThought) {
-          enhancedPrompt = addChainOfThoughtPrompting(enhancedPrompt);
-        }
+        // Enhance prompt with options
+        const enhancementOptions: PromptEnhancementOptions = {
+          enableChainOfThought: options.useChainOfThought,
+          mode: 'comprehensive'
+        };
+        const enhanced = this.promptEnhancer.enhance(enhancedPrompt, enhancementOptions);
+        enhancedPrompt = enhanced.content;
         
-        messages = createInitialMindmapPrompt(enhancedPrompt, undefined, options.customDate);
+        messages = this.orchestrator.createInitialPrompt(
+          enhancedPrompt, 
+          'comprehensive', 
+          options.customDate ? { customDate: options.customDate } : undefined
+        );
       }
       
       // Configure tools - use real web search if available
-      const tools = enableWebSearch && hasExaKey ? {
+      const tools = webSearchResult.shouldEnableWebSearch && webSearchResult.hasExaKey ? {
         ['search.web']: webSearchTool
       } : undefined;
-      
-      if (enableWebSearch && !hasExaKey) {
-        console.warn('Web search requested but EXA_API_KEY not configured. Add EXA_API_KEY to environment variables.');
-      }
       
       const response = await llmClient.generateText({
         messages,
@@ -100,7 +128,14 @@ export class MindmapService {
         }
       });
       
-      // Validate and clean the response
+      const responseValidation = this.validator.validateResponse(response.content);
+      if (!responseValidation.isValid) {
+        throw this.errorHandler.createProcessingError(
+          `Invalid response: ${responseValidation.errors.join(', ')}`,
+          { operation: 'generateMindmap', prompt: payload.prompt }
+        );
+      }
+
       const cleanedContent = this.validateAndCleanMindmap(response.content);
       
       return {
@@ -112,16 +147,25 @@ export class MindmapService {
         }
       };
     } catch (error) {
-      throw this.handleServiceError(error, 'mindmap_generation_failed');
+      const handledError = this.errorHandler.handleError(error, {
+        operation: 'generateMindmap',
+        prompt: payload.prompt
+      });
+      this.errorHandler.logError(handledError);
+      throw handledError;
     }
   }
   
-  /**
-   * Analyze if a follow-up question represents a topic shift
-   */
-  async analyzeTopicShift(payload: PromptPayload, options?: { customDate?: Date }): Promise<TopicShiftResponse> {
+  async analyzeTopicShift(payload: PromptPayload): Promise<TopicShiftResponse> {
     try {
-      // Extract current topic from existing mindmap
+      const promptValidation = this.validator.validatePrompt(payload.prompt);
+      if (!promptValidation.isValid) {
+        throw this.errorHandler.createValidationError(
+          `Invalid prompt: ${promptValidation.errors.join(', ')}`,
+          { operation: 'analyzeTopicShift', prompt: payload.prompt }
+        );
+      }
+
       const currentTopic = this.extractTopicFromMindmap(
         payload.context?.existingMindmap as string
       );
@@ -134,11 +178,10 @@ export class MindmapService {
         };
       }
       
-      const messages = createTopicShiftPrompt(
+      const messages = this.orchestrator.createTopicShiftPrompt(
         currentTopic,
         payload.context?.originalPrompt || '',
-        payload.prompt,
-        options?.customDate
+        payload.prompt
       );
       
       const analysis = await llmClient.generateStructuredResponse<TopicShiftAnalysis>(
@@ -239,12 +282,7 @@ export class MindmapService {
     return match ? match[1].trim() : null;
   }
   
-  private handleServiceError(error: unknown, code: string): Error {
-    if (error instanceof Error) {
-      return new Error(`${code}: ${error.message}`);
-    }
-    return new Error(`${code}: Unknown error occurred`);
-  }
+
 }
 
 export const mindmapService = new MindmapService();

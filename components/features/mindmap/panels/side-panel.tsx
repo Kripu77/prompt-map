@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useSidePanelStore } from '@/lib/stores/side-panel-store';
 import { useMindmapEditor } from '@/hooks/use-mindmap-editor';
-import { useStreamingMindmap } from '@/hooks/use-streaming-mindmap';
+import { useAISdkMindmap } from '@/hooks/use-ai-sdk-mindmap';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
 import { useUserSettings } from '@/hooks/use-user-settings';
 import { useReasoningPanelStore } from '@/lib/stores/reasoning-panel-store';
@@ -17,14 +17,11 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { X, FileText, Save, Brain } from 'lucide-react';
-import { generateTitleFromPrompt } from '@/lib/utils';
+import { X, FileText, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ai-elements/reasoning';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import type { MindmapMode } from '@/lib/api/llm/prompts/mindmap-prompts';
+import type { MindmapMode } from '@/lib/api/llm/prompts';
 
 
 
@@ -37,14 +34,13 @@ export function SidePanel() {
     streamingContent,
     reasoningContent: streamingReasoningContent,
     isStreaming,
-    isComplete,
     error,
-    progress,
     generateMindmap,
     generateFollowUp,
-    stopGeneration,
     resetStream,
-  } = useStreamingMindmap();
+    toolCalls,
+    sources,
+  } = useAISdkMindmap();
   const { reasoningContent: savedReasoningContent, reasoningDuration: savedReasoningDuration } = useReasoningPanelStore();
   
   // Combine reasoning content from streaming and saved sources
@@ -55,7 +51,7 @@ export function SidePanel() {
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [topicShiftDetected, setTopicShiftDetected] = useState(false);
-  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  const [, setPendingPrompt] = useState<string | null>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
 
   const displayContent = streamingContent || mindmapData;
@@ -215,6 +211,8 @@ export function SidePanel() {
               className="h-full" 
               streamingContent={streamingContent} 
               isStreaming={isStreaming}
+              sources={sources}
+              toolCalls={toolCalls}
             />
           </div>
           

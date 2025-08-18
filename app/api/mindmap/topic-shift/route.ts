@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { mindmapService } from '@/lib/api/services/mindmap-service';
+import { mindmapService } from '@/lib/api/services/core/mindmap-service';
 import {
   validateRequestBody,
   createValidationErrorResponse,

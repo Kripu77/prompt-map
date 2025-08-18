@@ -79,7 +79,7 @@ export function Header() {
  
   return (
     <header className="border-b border-border/30 bg-background/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
-      <div className="px-3 sm:px-5 md:px-8 py-2 sm:py-3 flex justify-between items-center">
+      <div className="px-4 sm:px-6 md:px-8 lg:px-12 py-2 sm:py-3 flex justify-between items-center max-w-none">
         <motion.div 
           className="flex items-center gap-2 flex-1"
           initial={{ opacity: 0, y: -10 }}
@@ -105,7 +105,7 @@ export function Header() {
           
           <div className="min-w-0 flex-1">
             {/* Truncate title on small screens */}
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/80 truncate max-w-[180px] xs:max-w-[240px] sm:max-w-none">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/80">
              Prompt Map
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block max-w-md">

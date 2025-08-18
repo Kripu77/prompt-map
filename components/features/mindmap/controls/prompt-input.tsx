@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect, FormEvent } from "react";
-import { Brain, ChevronDown, CornerDownLeft, Loader2, ArrowRightCircle } from "lucide-react";
+import { useState, useEffect, FormEvent, useCallback, useMemo } from "react";
+import { Brain, ChevronDown, CornerDownLeft, ArrowRightCircle } from "lucide-react";
+import { Loader } from "@/components/ai-elements/loader";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { MindmapMode } from "@/lib/api/llm/prompts/mindmap-prompts";
+import type { MindmapMode } from "@/lib/api/llm/prompts";
 // Define ChatStatus type locally since it's not exported from ai package
 type ChatStatus = 'idle' | 'submitted' | 'streaming' | 'error' | 'ready';
 
@@ -48,16 +49,16 @@ export function PromptInput({
     setLocalMode(mode);
   }, [mode]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = useCallback((e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmedValue = value.trim();
     if (trimmedValue && !loading) {
       onSubmit(trimmedValue);
       setValue("");
     }
-  };
+  }, [value, loading, onSubmit]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       const form = e.currentTarget.form;
@@ -65,18 +66,18 @@ export function PromptInput({
         form.requestSubmit();
       }
     }
-  };
+  }, []);
 
-  const handleModeSelect = (newMode: MindmapMode) => {
+  const handleModeSelect = useCallback((newMode: MindmapMode) => {
     setLocalMode(newMode);
     if (onModeChange) {
       onModeChange(newMode);
     }
-  };
+  }, [onModeChange]);
 
-  const getSubmitIcon = () => {
+  const submitIcon = useMemo(() => {
     if (status === 'submitted' || loading) {
-      return <Loader2 className="h-4 w-4 animate-spin" />;
+      return <Loader size={16} />;
     } else if (status === 'error') {
       return <ArrowRightCircle className="h-4 w-4" />;
     } else if (isFollowUpMode) {
@@ -84,7 +85,7 @@ export function PromptInput({
     } else {
       return <ArrowRightCircle className="h-4 w-4" />;
     }
-  };
+  }, [status, loading, isFollowUpMode]);
 
   return (
     <div className="w-full relative z-10">
@@ -145,8 +146,8 @@ export function PromptInput({
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
             >
-              {getSubmitIcon()}
-            </Button>
+                {submitIcon}
+              </Button>
           </div>
 
           {/* Bottom toolbar with mode selection */}

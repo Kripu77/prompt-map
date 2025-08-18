@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
-  $createTextNode,
   $getSelection,
   $isRangeSelection,
   COMMAND_PRIORITY_EDITOR,

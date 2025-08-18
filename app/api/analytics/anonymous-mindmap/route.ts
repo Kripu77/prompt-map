@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { analyticsService } from '@/lib/api/services/analytics-service';
+import { analyticsService } from '@/lib/api/services/analytics/analytics-service';
 import {
   validateRequestBody,
   createValidationErrorResponse,
@@ -39,4 +39,4 @@ export async function POST(request: NextRequest) {
     console.error('Error saving analytics data:', error);
     return createErrorResponse('Failed to save analytics data', 500, 'ANALYTICS_FAILED');
   }
-} 
+}

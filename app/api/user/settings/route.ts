@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { getOrCreateUserSettings, updateUserSettings } from '@/lib/db/user-settings';
+import { getOrCreateUserSettings, updateUserSettings } from '@/lib/api/services/user/user-settings-service';
 import { UserSettingsUpdate } from '@/lib/types/settings';
 
 export async function GET() {

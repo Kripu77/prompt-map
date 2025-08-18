@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import {
   Background,
-  Controls,
   ReactFlow,
   ReactFlowProvider,
   useNodesState,
@@ -16,7 +15,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import type { ReactFlowMindmapViewProps, MindmapNode } from '@/components/features/mindmap/types';
-import { REACT_FLOW_OPTIONS, EDGE_STYLES } from '@/components/features/mindmap/constants';
+import { REACT_FLOW_OPTIONS } from '@/components/features/mindmap/constants';
 import { nodeTypes } from './nodes';
 import { useMindmapData } from '@/hooks/use-mindmap-data';
 import { useNodeAnimation } from '@/hooks/use-node-animation';
@@ -43,13 +42,7 @@ function AutoZoomHandler({ nodes, mindmapData }: AutoZoomHandlerProps) {
     if (nodes.length === 0) return;
 
     // Show all nodes for better initial view with minimal padding
-    fitView({
-      padding: 0.05,
-      maxZoom: 1.0,
-      minZoom: 0.2,
-      duration: 600,
-      includeHiddenNodes: false,
-    });
+    fitView(REACT_FLOW_OPTIONS.FIT_VIEW_OPTIONS.AUTO_ZOOM);
   }, [nodes, fitView]);
 
   useEffect(() => {
@@ -57,7 +50,7 @@ function AutoZoomHandler({ nodes, mindmapData }: AutoZoomHandlerProps) {
       const timeoutId = setTimeout(() => {
         autoZoomToRoot();
         hasAutoZoomedRef.current = true;
-      }, 100); // Reduced delay for faster initial display
+      }, REACT_FLOW_OPTIONS.TIMING.AUTO_ZOOM_DELAY);
       
       return () => clearTimeout(timeoutId);
     }
@@ -69,7 +62,7 @@ function AutoZoomHandler({ nodes, mindmapData }: AutoZoomHandlerProps) {
     if (mindmapData && mindmapData !== previousMindmapDataRef.current && nodes.length > 0) {
       const timeoutId = setTimeout(() => {
         autoZoomToRoot();
-      }, 100); // Reduced delay for faster display
+      }, REACT_FLOW_OPTIONS.TIMING.AUTO_ZOOM_DELAY);
       
       previousMindmapDataRef.current = mindmapData;
       return () => clearTimeout(timeoutId);
@@ -130,11 +123,7 @@ function ReactFlowInner({ mindmapData, nodes, edges, onNodesChange, onEdgesChang
   };
 
   const handleRefresh = () => {
-    reactFlowInstance?.fitView({ 
-      padding: 0.05, 
-      maxZoom: 1.0,
-      includeHiddenNodes: true 
-    });
+    reactFlowInstance?.fitView(REACT_FLOW_OPTIONS.FIT_VIEW_OPTIONS.REFRESH);
   };
 
   return (
@@ -147,16 +136,9 @@ function ReactFlowInner({ mindmapData, nodes, edges, onNodesChange, onEdgesChang
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           fitView
-          fitViewOptions={{ 
-            padding: 0.05, 
-            maxZoom: 1.0,
-            includeHiddenNodes: true
-          }}
-          defaultEdgeOptions={{
-            type: 'bezier',
-            animated: true,
-            style: EDGE_STYLES.DEFAULT,
-          }}
+          fitViewOptions={REACT_FLOW_OPTIONS.FIT_VIEW_OPTIONS.DEFAULT}
+          defaultViewport={REACT_FLOW_OPTIONS.DEFAULT_VIEWPORT}
+          defaultEdgeOptions={REACT_FLOW_OPTIONS.DEFAULT_EDGE_OPTIONS}
           minZoom={REACT_FLOW_OPTIONS.MIN_ZOOM}
           maxZoom={REACT_FLOW_OPTIONS.MAX_ZOOM_LIMIT}
         >
@@ -175,7 +157,7 @@ function ReactFlowInner({ mindmapData, nodes, edges, onNodesChange, onEdgesChang
         onFullscreen={handleFullscreen}
         onExport={handleExport}
         onRefresh={handleRefresh}
-        className="absolute bottom-4 right-2 z-10"
+        className="absolute bottom-2 right-6 z-10"
       />
     </>
   );
@@ -203,8 +185,7 @@ export function ReactFlowMindmapView({ mindmapData, className }: ReactFlowMindma
     const { nodes: visibleNodes, edges: visibleEdges } = generateVisibleNodesAndEdges(
       parsedTree,
       renderedNodeIds,
-      onToggle,
-      theme === 'dark'
+      onToggle
     );
 
    
@@ -212,18 +193,17 @@ export function ReactFlowMindmapView({ mindmapData, className }: ReactFlowMindma
     if (visibleNodes.length > 0) {
       const timeoutId = setTimeout(() => {
         layoutGraph(visibleNodes, visibleEdges).then((laidOutNodes) => {
-          console.log("Laid out nodes:", laidOutNodes.map(n => ({ id: n.id, position: n.position })));
           setNodes(laidOutNodes as MindmapNode[]);
           setEdges(visibleEdges as Edge[]);
         });
-      }, 25); // Reduced delay for faster layout rendering
+      }, REACT_FLOW_OPTIONS.TIMING.LAYOUT_RENDER_DELAY);
       
       return () => clearTimeout(timeoutId);
     } else {
       setNodes([]);
       setEdges([]);
     }
-  }, [parsedTree, renderedNodeIds, onToggle, setNodes, setEdges]);
+  }, [parsedTree, renderedNodeIds, onToggle, setNodes, setEdges, theme]);
 
   if (!mindmapData) {
     return (

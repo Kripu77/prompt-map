@@ -42,13 +42,6 @@ class StreamingLLMClient {
     const config = { ...DEFAULT_STREAMING_CONFIG, ...request.config };
 
     try {
-      console.log('StreamingLLMClient: Starting stream with config:', {
-        model: config.model,
-        includeReasoning: config.includeReasoning,
-        temperature: config.temperature,
-        maxOutputTokens: config.maxOutputTokens
-      });
-
       const result = await streamText({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         model: this.openrouter.chat(config.model) as any,
@@ -57,26 +50,21 @@ class StreamingLLMClient {
         maxOutputTokens: config.maxOutputTokens,
         topP: config.topP,
         tools: config.tools,
+        maxSteps: 2,
         reasoning: config.includeReasoning ? {
           enabled: true,
           effort: "medium"
         } : undefined,
+        sendReasoning: config.includeReasoning,
         onError: ({ error }: { error: unknown }) => {
-          console.error('StreamText error occurred:', error);
-          console.error('Error details:', {
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            type: typeof error,
-            error
-          });
+          console.error('StreamText error:', error instanceof Error ? error.message : 'Unknown error');
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
-      console.log('StreamingLLMClient: Stream created successfully');
+    
       return result;
     } catch (error) {
-      console.error('StreamingLLMClient error:', error);
       throw new Error(`Streaming failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

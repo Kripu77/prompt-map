@@ -22,6 +22,7 @@ export const MindmapOptionsSchema = z.object({
   timeConstraint: z.enum(['quick', 'detailed', 'comprehensive']).optional(),
   format: z.enum(['academic', 'practical', 'creative']).optional(),
   useChainOfThought: z.boolean().optional(),
+  enableWebSearch: z.boolean().optional(),
 });
 
 export const ThreadCreateSchema = z.object({

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { mindmapService, type MindmapGenerationOptions } from '@/lib/api/services/mindmap-service';
+import { mindmapService, type MindmapGenerationOptions } from '@/lib/api/services/core/mindmap-service';
 import type { PromptPayload, MindmapResponse, TopicShiftResponse } from '@/types/api';
 
 // Hook for generating mindmaps

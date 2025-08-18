@@ -28,7 +28,6 @@ export function useCheckTopicShift() {
       }
       
       const result = await response.json()
-      // The new API returns { success: true, data: { isTopicShift, confidence, reason, recommendation } }
       return result.data as TopicShiftResponse
     }
   })
@@ -48,7 +47,6 @@ export function useGenerateMindmap() {
       }
       
       const result = await response.json()
-      // The new API returns { success: true, data: { content, metadata } }
       return result.data as MindmapResponse
     }
   })
@@ -82,7 +80,6 @@ export async function fetchThreadsAPI(): Promise<ThreadsResponse> {
   }
   
   const result = await response.json();
-  // The new API returns { success: true, data: { threads: [...] } }
   return result.data as ThreadsResponse;
 }
 
@@ -95,7 +92,6 @@ export async function getThreadAPI(id: string): Promise<ThreadResponse> {
   }
   
   const result = await response.json();
-  // The new API returns { success: true, data: { thread: {...} } }
   return result.data as ThreadResponse;
 }
 
@@ -122,7 +118,6 @@ export function useCreateThread() {
   return useMutation({
     mutationFn: createThreadAPI,
     onSuccess: () => {
-      // Invalidate the threads query to trigger a controlled refetch
       queryClient.invalidateQueries({ queryKey: ['threads'] });
     }
   });

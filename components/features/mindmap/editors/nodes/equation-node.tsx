@@ -105,7 +105,7 @@ export class EquationNode extends DecoratorNode<ReactNode> {
           }}
         />
       );
-    } catch (error) {
+    } catch {
       return (
         <span className="equation-error">
           Error: {equation}

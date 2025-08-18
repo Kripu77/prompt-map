@@ -1,49 +1,73 @@
-export function collectAllNodeIds(tree: unknown): Set<string> {
+type TreeNode = {
+  id: string;
+  children?: unknown[];
+  level?: number;
+};
+
+const DEFAULT_LEVEL = 999;
+
+const isValidTreeNode = (node: unknown): node is TreeNode => {
+  return (
+    node !== null &&
+    typeof node === 'object' &&
+    'id' in node
+  );
+};
+
+const hasLevel = (node: TreeNode): node is TreeNode & { level: number } => {
+  return 'level' in node && typeof node.level === 'number';
+};
+
+const traverseTree = (
+  node: unknown,
+  callback: (node: TreeNode) => void
+): void => {
+  if (!isValidTreeNode(node)) return;
+  
+  callback(node);
+  
+  if (node.children) {
+    node.children.forEach(child => traverseTree(child, callback));
+  }
+};
+
+const searchTree = (
+  node: unknown,
+  predicate: (node: TreeNode) => boolean
+): TreeNode | null => {
+  if (!isValidTreeNode(node)) return null;
+  
+  if (predicate(node)) return node;
+  
+  if (node.children) {
+    for (const child of node.children) {
+      const found = searchTree(child, predicate);
+      if (found) return found;
+    }
+  }
+  
+  return null;
+};
+
+export const collectAllNodeIds = (tree: unknown): Set<string> => {
   const nodeIds = new Set<string>();
   
-  const traverse = (node: unknown) => {
-    if (!node || typeof node !== 'object' || !('id' in node)) return;
-    
-    const typedNode = node as { id: string; children?: unknown[] };
-    nodeIds.add(typedNode.id);
-    
-    if (typedNode.children) {
-      typedNode.children.forEach(traverse);
-    }
-  };
+  traverseTree(tree, (node) => {
+    nodeIds.add(node.id);
+  });
   
-  traverse(tree);
   return nodeIds;
-}
+};
 
-export function findNodeById(tree: unknown, nodeId: string): unknown | null {
-  const findNode = (node: unknown): unknown => {
-    if (!node || typeof node !== 'object' || !('id' in node)) return null;
-    
-    const typedNode = node as { id: string; children?: unknown[] };
-    if (typedNode.id === nodeId) return node;
-    
-    if (typedNode.children) {
-      for (const child of typedNode.children) {
-        const found = findNode(child);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-  
-  return findNode(tree);
-}
+export const findNodeById = (tree: unknown, nodeId: string): TreeNode | null => {
+  return searchTree(tree, (node) => node.id === nodeId);
+};
 
-export function getNodeLevel(tree: unknown, nodeId: string): number {
+export const getNodeLevel = (tree: unknown, nodeId: string): number => {
   const node = findNodeById(tree, nodeId);
-  if (node && typeof node === 'object' && 'level' in node) {
-    const typedNode = node as { level: number };
-    return typedNode.level;
-  }
-  return 999;
-}
+  return node && hasLevel(node) ? node.level : DEFAULT_LEVEL;
+};
 
-export function sortNodesByLevel(tree: unknown, nodeIds: string[]): string[] {
+export const sortNodesByLevel = (tree: unknown, nodeIds: string[]): string[] => {
   return nodeIds.sort((a, b) => getNodeLevel(tree, a) - getNodeLevel(tree, b));
-}
+};

@@ -2,83 +2,153 @@ import ELK from 'elkjs/lib/elk.bundled.js';
 import { Node, Edge } from '@xyflow/react';
 import { ELK_OPTIONS, LAYOUT_SPACING } from '../../components/features/mindmap/constants';
 
+type NodeMetrics = {
+  depth: number;
+  branching: number;
+};
+
+type LayoutMetrics = {
+  maxDepth: number;
+  maxBranching: number;
+  avgWidth: number;
+  avgHeight: number;
+  complexityMultiplier: number;
+};
+
+type ElkNode = {
+  id: string;
+  width: number;
+  height: number;
+};
+
+type ElkEdge = {
+  id: string;
+  sources: string[];
+  targets: string[];
+};
+
+type ElkLayoutNode = {
+  id: string;
+  x?: number;
+  y?: number;
+};
+
+type ElkLayoutResult = {
+  children?: ElkLayoutNode[];
+};
+
 const elk = new ELK();
 
-export async function layoutGraph(nodes: Node[], edges: Edge[]): Promise<Node[]> {
-  if (nodes.length === 0) return nodes;
+const DEFAULT_NODE_WIDTH = 200;
+const DEFAULT_NODE_HEIGHT = 80;
+const DEPTH_MULTIPLIER_BASE = 1.1;
+const BRANCHING_MULTIPLIER_BASE = 1.05;
+
+const extractNodeMetrics = (node: Node): NodeMetrics => {
+  const level = typeof node.data?.level === 'number' ? node.data.level : 1;
+  const hasChildren = node.data?.hasChildren || false;
+  const children = node.data?.children;
+  const childrenCount = Array.isArray(children) ? children.length : 0;
   
-  // Calculate hierarchical depth and branching complexity
-  const nodeDepthMap = new Map<string, number>();
-  const nodeBranchingMap = new Map<string, number>();
+  return {
+    depth: level,
+    branching: hasChildren ? childrenCount : 0,
+  };
+};
+
+const calculateLayoutMetrics = (nodes: Node[]): LayoutMetrics => {
+  const metrics = nodes.map(extractNodeMetrics);
   
-  // Build depth and branching maps
-  nodes.forEach(node => {
-    const level = typeof node.data?.level === 'number' ? node.data.level : 1;
-    const hasChildren = node.data?.hasChildren || false;
-    const children = node.data?.children;
-    const childrenCount = Array.isArray(children) ? children.length : 0;
-    
-    nodeDepthMap.set(node.id, level);
-    nodeBranchingMap.set(node.id, hasChildren ? childrenCount : 0);
-  });
+  const depths = metrics.map(m => m.depth).filter(d => typeof d === 'number');
+  const branchings = metrics.map(m => m.branching).filter(b => typeof b === 'number');
   
-  // Calculate maximum depth and branching factor
-  const depthValues = Array.from(nodeDepthMap.values()).filter(v => typeof v === 'number');
-  const branchingValues = Array.from(nodeBranchingMap.values()).filter(v => typeof v === 'number');
-  const maxDepth = depthValues.length > 0 ? Math.max(...depthValues) : 1;
-  const maxBranching = branchingValues.length > 0 ? Math.max(...branchingValues) : 0;
+  const maxDepth = depths.length > 0 ? Math.max(...depths) : 1;
+  const maxBranching = branchings.length > 0 ? Math.max(...branchings) : 0;
   
-  // Calculate dynamic spacing based on node sizes and hierarchical complexity
-  const avgNodeWidth = nodes.reduce((sum, node) => sum + (node.width || 200), 0) / nodes.length;
-  const avgNodeHeight = nodes.reduce((sum, node) => sum + (node.height || 80), 0) / nodes.length;
+  const avgWidth = nodes.reduce((sum, node) => sum + (node.width || DEFAULT_NODE_WIDTH), 0) / nodes.length;
+  const avgHeight = nodes.reduce((sum, node) => sum + (node.height || DEFAULT_NODE_HEIGHT), 0) / nodes.length;
   
-  // Minimal multipliers for deeper hierarchies with sub-branches
-  const depthMultiplier = Math.max(1, Math.pow(1.1, maxDepth - 1));
-  const branchingMultiplier = Math.max(1, Math.pow(1.05, maxBranching));
+  const depthMultiplier = Math.max(1, Math.pow(DEPTH_MULTIPLIER_BASE, maxDepth - 1));
+  const branchingMultiplier = Math.max(1, Math.pow(BRANCHING_MULTIPLIER_BASE, maxBranching));
   const complexityMultiplier = depthMultiplier * branchingMultiplier;
   
-  const dynamicElkOptions = {
-    ...ELK_OPTIONS,
-    'elk.spacing.nodeNode': Math.max(
-      LAYOUT_SPACING.MIN_NODE_SPACING * complexityMultiplier,
-      avgNodeHeight * LAYOUT_SPACING.NODE_HEIGHT_FACTOR * complexityMultiplier
-    ).toString(),
-    'elk.layered.spacing.nodeNodeBetweenLayers': Math.max(
-      LAYOUT_SPACING.MIN_LAYER_SPACING * complexityMultiplier,
-      avgNodeWidth * LAYOUT_SPACING.NODE_WIDTH_FACTOR * complexityMultiplier
-    ).toString(),
-    'elk.layered.spacing.edgeNodeBetweenLayers': Math.max(
-      LAYOUT_SPACING.MIN_EDGE_LAYER_SPACING * complexityMultiplier,
-      avgNodeWidth * LAYOUT_SPACING.EDGE_WIDTH_FACTOR * complexityMultiplier
-    ).toString(),
-    'elk.spacing.edgeNode': Math.max(
-      LAYOUT_SPACING.MIN_EDGE_NODE_SPACING * complexityMultiplier,
-      avgNodeHeight * LAYOUT_SPACING.EDGE_HEIGHT_FACTOR * complexityMultiplier
-    ).toString(),
+  return {
+    maxDepth,
+    maxBranching,
+    avgWidth,
+    avgHeight,
+    complexityMultiplier,
   };
+};
 
-  const graph = {
-    id: 'rootGraph',
-    layoutOptions: dynamicElkOptions,
-    children: nodes.map((n) => ({
-      id: n.id,
-      width: n.width || 200,
-      height: n.height || 80,
-    })),
-    edges: edges.map((e) => ({
-      id: e.id,
-      sources: [e.source],
-      targets: [e.target],
-    })),
+const createDynamicSpacing = (metrics: LayoutMetrics) => {
+  const { avgWidth, avgHeight, complexityMultiplier } = metrics;
+  
+  return {
+    nodeNode: Math.max(
+      LAYOUT_SPACING.MIN_NODE_SPACING * complexityMultiplier,
+      avgHeight * LAYOUT_SPACING.NODE_HEIGHT_FACTOR * complexityMultiplier
+    ),
+    nodeNodeBetweenLayers: Math.max(
+      LAYOUT_SPACING.MIN_LAYER_SPACING * complexityMultiplier,
+      avgWidth * LAYOUT_SPACING.NODE_WIDTH_FACTOR * complexityMultiplier
+    ),
+    edgeNodeBetweenLayers: Math.max(
+      LAYOUT_SPACING.MIN_EDGE_LAYER_SPACING * complexityMultiplier,
+      avgWidth * LAYOUT_SPACING.EDGE_WIDTH_FACTOR * complexityMultiplier
+    ),
+    edgeNode: Math.max(
+      LAYOUT_SPACING.MIN_EDGE_NODE_SPACING * complexityMultiplier,
+      avgHeight * LAYOUT_SPACING.EDGE_HEIGHT_FACTOR * complexityMultiplier
+    ),
   };
-  
-  const layout = await elk.layout(graph);
-  
-  return nodes.map((node) => {
-    const layoutNode = layout.children?.find((c) => c.id === node.id);
+};
+
+const createElkOptions = (spacing: ReturnType<typeof createDynamicSpacing>) => ({
+  ...ELK_OPTIONS,
+  'elk.spacing.nodeNode': spacing.nodeNode.toString(),
+  'elk.layered.spacing.nodeNodeBetweenLayers': spacing.nodeNodeBetweenLayers.toString(),
+  'elk.layered.spacing.edgeNodeBetweenLayers': spacing.edgeNodeBetweenLayers.toString(),
+  'elk.spacing.edgeNode': spacing.edgeNode.toString(),
+});
+
+const createElkNodes = (nodes: Node[]): ElkNode[] => 
+  nodes.map(node => ({
+    id: node.id,
+    width: node.width || DEFAULT_NODE_WIDTH,
+    height: node.height || DEFAULT_NODE_HEIGHT,
+  }));
+
+const createElkEdges = (edges: Edge[]): ElkEdge[] => 
+  edges.map(edge => ({
+    id: edge.id,
+    sources: [edge.source],
+    targets: [edge.target],
+  }));
+
+const applyLayoutPositions = (nodes: Node[], layoutResult: ElkLayoutResult): Node[] => 
+  nodes.map(node => {
+    const layoutNode = layoutResult.children?.find((c: ElkLayoutNode) => c.id === node.id);
     return {
       ...node,
       position: { x: layoutNode?.x || 0, y: layoutNode?.y || 0 },
     };
   });
-}
+
+export const layoutGraph = async (nodes: Node[], edges: Edge[]): Promise<Node[]> => {
+  if (nodes.length === 0) return nodes;
+  
+  const metrics = calculateLayoutMetrics(nodes);
+  const spacing = createDynamicSpacing(metrics);
+  const elkOptions = createElkOptions(spacing);
+  
+  const graph = {
+    id: 'rootGraph',
+    layoutOptions: elkOptions,
+    children: createElkNodes(nodes),
+    edges: createElkEdges(edges),
+  };
+  
+  const layout = await elk.layout(graph);
+  return applyLayoutPositions(nodes, layout);
+};

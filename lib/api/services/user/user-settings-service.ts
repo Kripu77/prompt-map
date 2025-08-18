@@ -1,7 +1,7 @@
-import { db } from "./index";
-import { userSettings } from "./schema";
+import { db } from "@/lib/db";
+import { userSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { UserSettings, UserSettingsUpdate, MindmapMode } from "../types/settings";
+import { UserSettings, UserSettingsUpdate, MindmapMode } from "@/lib/types/settings";
 
 export async function getUserSettings(userId: string): Promise<UserSettings | null> {
   try {

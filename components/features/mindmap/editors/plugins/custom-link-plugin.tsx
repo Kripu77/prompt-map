@@ -10,10 +10,9 @@ import {
   COMMAND_PRIORITY_HIGH,
   KEY_DOWN_COMMAND,
   CLICK_COMMAND,
-  $getNearestNodeFromDOMNode,
   TextNode,
 } from 'lexical';
-import { $createLinkNode, $isLinkNode } from '@lexical/link';
+import { $createLinkNode } from '@lexical/link';
 
 export function CustomLinkPlugin(): null {
   const [editor] = useLexicalComposerContext();

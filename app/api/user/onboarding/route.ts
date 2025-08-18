@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { onboardingService } from '@/lib/api/services/onboarding-service';
+import { onboardingService } from '@/lib/api/services/user/onboarding-service';
 import {
   validateRequestBody,
   createValidationErrorResponse,

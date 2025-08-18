@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { EditorState, $createTextNode, $insertNodes } from 'lexical';
+import { EditorState } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { $convertFromMarkdownString, $convertToMarkdownString } from '@lexical/markdown';
@@ -11,7 +11,6 @@ import {
   $createRangeSelection,
   $isTextNode,
   $isElementNode,
-  $getSelection,
 } from 'lexical';
 import { useMindmapStore } from '@/lib/stores/mindmap-store';
 import { ENHANCED_TRANSFORMERS } from '../transformers/equation-transformers';
